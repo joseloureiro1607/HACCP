@@ -723,7 +723,9 @@ const M={
      {k:'codigo',l:'Código / versão do impresso'},{k:'itens',l:'Linhas fixas da folha (uma por linha — opcional)',t:'textarea'},
      {k:'campos',l:'Campos a registar',t:'lines',req:1,cols:[{k:'nome',l:'Campo',big:1},{k:'tipo',l:'Tipo',t:'sel',o:TIPOS_CAMPO,def:'Número'},{k:'unidade',l:'Unidade'},{k:'min',l:'Mín.',t:'number'},{k:'max',l:'Máx.',t:'number'},{k:'opcoes',l:'Opções (separe com ;)'}],
        hint:r=>r.tipo==='Lista de opções'?'Escreva as opções separadas por ;':r.tipo==='Conforme / Não conforme'?'«Não conforme» gera não conformidade automaticamente':(r.tipo==='Número'||!r.tipo)&&(r.min||r.max)?'Fora de '+(r.min||'—')+' a '+(r.max||'—')+' '+(r.unidade||'')+' gera não conformidade':''},
+     {k:'pcc',l:'Este registo monitoriza um PCC (opcional)',t:'sel',o:()=>computeHA().pccs.map(p=>({v:p.code,l:p.code+' — '+p.etapa.nome+': '+p.perigo}))},
      {k:'instrucoes',l:'Instruções de preenchimento',t:'textarea'},{k:'ativo',l:'Em uso',t:'sel',o:['Sim','Não'],def:()=>'Sim'},{k:'docs',l:'Impresso original',t:'files'}],
+  tools:'<div class="tools noprint"><button type="button" class="btn" data-tool="blank">Imprimir impresso em branco</button></div>',
   list:['nome','sector','frequencia','ncampos','nregs','ativo'],
   validate:r=>{ const c=(r.campos||[]).filter(x=>x.nome); if(!c.length) return 'Adicione pelo menos um campo.'; for(const x of c){ if(num(x.min)!=null&&num(x.max)!=null&&+x.min>+x.max) return 'No campo «'+x.nome+'» o mínimo é superior ao máximo.'; if(x.tipo==='Lista de opções'&&!String(x.opcoes||'').includes(';')&&!String(x.opcoes||'').trim()) return 'Indique as opções do campo «'+x.nome+'».'; } return null; },
   virt:{ncampos:{l:'Campos',fn:r=>(r.campos||[]).length+((r.itens||'').trim()?' × '+(r.itens||'').split('\n').filter(x=>x.trim()).length+' linhas':'')},nregs:{l:'Registos',fn:r=>D('registos').filter(x=>x.modelo===r.id).length}}},
@@ -1027,6 +1029,7 @@ function viewList(key){
   h+='<div class="row noprint" style="margin-bottom:12px">'+(L>=2?'<button class="btn p" data-act="new">+ Novo</button>':'');
   if(key==='rececao'&&L>=2) h+='<button class="btn" data-act="newscan">Nova receção por leitura</button>';
   if(key==='lotes'&&L>=2) h+='<button class="btn p" data-act="proddia">Produção do dia (várias receitas)</button>';
+  if(GEN[key]&&L>=2) h+='<button class="btn" data-act="gen">Modelos genéricos</button>';
   if(key==='modelos'&&L>=2) h+='<button class="btn p" data-act="modlib">Modelos do sector</button><button class="btn" data-act="modimp">Importar modelo da empresa</button>';
   if(key==='registos'&&L>=2&&!D('modelos').length) h+='<a class="btn" href="#/modelos">Criar modelos de registo</a>';
   if(key==='temperaturas'&&L>=2){ h=h.replace('data-act="new">+ Novo','data-act="new">+ Um equipamento'); h+='<button class="btn p" data-act="tempall">Registar todos os equipamentos</button>'; }
@@ -1034,7 +1037,7 @@ function viewList(key){
   if(key==='etapas'&&L>=3) h+='<button class="btn" data-act="modelo">Carregar modelo de sector</button>';
   if(key==='documentos'&&lvl('importar')>=2) h+='<a class="btn" href="#/importar">Importar documentos existentes</a>';
   h+='<input type="search" id="q" placeholder="Pesquisar…" style="max-width:240px"><span class="sp"></span>';
-  h+=(L>=3?'<button class="btn s" data-act="csvin">Importar Excel/CSV</button>':'')+'<button class="btn s" data-act="csv">Exportar CSV</button><button class="btn s" data-act="print">Imprimir</button></div>';
+  h+=(L>=3?'<button class="btn s" data-act="csvin">Importar Excel/CSV</button>':'')+'<button class="btn s" data-act="csv">Exportar CSV</button><button class="btn s" data-act="print">Imprimir</button>'+(BLANK_OK(key)?'<button class="btn s" data-act="blank">Impresso em branco</button>':'')+'</div>';
   h+='<div class="pr-only"><b>'+esc(S.empresa.nome||'')+'</b> — '+esc(m.t)+' — impresso em '+fDate(today())+'</div>';
   if(!rows.length) h+='<div class="card empty">Ainda não há registos.'+(L>=2?' Toque em <b>+ Novo</b> para começar.':'')+'</div>';
   else { const clipCol=rows.some(r=>recFiles(key,r).length);
@@ -1147,7 +1150,7 @@ function openForm(key,id,preset){
     if(m.after) m.after(r);
     if(v.responsavel) setUser(v.responsavel);
     let msg=(m.msg&&m.msg(r))||'Guardado';
-    if(m.nc){ const t=m.nc(r); if(t&&!r._nc){ const n={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',data:today(),origem:ORIG[key]||'Outra',gravidade:key==='pccRegisto'?'Crítica':'Maior',estado:'Aberta',descricao:t,correcao:r.acao||'',responsavel:r.responsavel||'',_src:key+':'+r.id}; D('nc').push(n); r._nc=n.id; msg='Guardado — não conformidade criada automaticamente'; } }
+    if(m.nc){ const t=m.nc(r); if(t&&!r._nc){ const n={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',data:today(),origem:ORIG[key]||'Outra',gravidade:key==='pccRegisto'||(key==='registos'&&(D('modelos').find(x=>x.id===r.modelo)||{}).pcc)?'Crítica':'Maior',estado:'Aberta',descricao:t,correcao:r.acao||'',responsavel:r.responsavel||'',_src:key+':'+r.id}; D('nc').push(n); r._nc=n.id; msg='Guardado — não conformidade criada automaticamente'; } }
     save(); closeModal(1); render(); toast(msg,4000);
   }});
   const root=modal((ex?(canSave?'Editar':'Consultar'):'Novo')+' — '+m.t,body,btns,1);
@@ -1172,6 +1175,7 @@ function openForm(key,id,preset){
             box.querySelectorAll('.lrow').forEach(rw=>{ if(![...rw.querySelectorAll('[data-c]')].some(el=>el.value)) rw.remove(); });
             let n=0; sel.forEach(nm=>CHECKLISTS[nm].filter(t=>!have.includes(t)).forEach(t=>{ box.insertAdjacentHTML('beforeend',lineRow(f,{req:t})); have.push(t); n++; }));
             closeModal(2); toast(n+' requisito(s) carregado(s): marque cada um'); }}],2); }
+      else if(tool.dataset.tool==='blank'){ const v=readForm(root,m.f); printBlankModelo({...rec,...v}); }
       else importDoc(root); return; }
     const sf=e.target.closest('[data-signf]'); if(sf){ const f=m.f.find(x=>x.k===sf.dataset.signf); let nome=CUR?CUR.nome:'';
       if(f.nomeDe){ const el=root.querySelector('[name="'+f.nomeDe+'"]'); const fd=m.f.find(x=>x.k===f.nomeDe); nome=el&&el.value?(fd.t==='ref'?lbl(fd.ref,el.value):el.value):''; if(!nome){ toast('Escolha primeiro: '+fd.l); return; } }
@@ -1398,6 +1402,64 @@ function bindArquivo(){ const v=document.getElementById('view'); const q=v.query
   if(q){ q.oninput=flt; mm.onchange=flt; }
   v.querySelectorAll('[data-ao]').forEach(a=>a.onclick=async e=>{ e.stopPropagation(); const x=ARQ[+a.dataset.ao]; openBlob(await FDB.get(x.fid).catch(()=>null),x.name); });
   v.querySelectorAll('[data-ar]').forEach(b=>b.onclick=()=>{ const x=ARQ[+b.dataset.ar]; openForm(x.k,x.id); }); }
+/* ---------- Modelos genéricos por menu (planos e listas) ---------- */
+const GEN_EPIS={comum:[{nome:'Luvas descartáveis (nitrilo, uso alimentar)',tipo:'Proteção das mãos (luvas)',norma:'EN ISO 374 · Reg. (CE) 1935/2004',periodicidade:'1'},{nome:'Touca descartável',tipo:'Proteção da cabeça (touca / barrete)',periodicidade:'1'},{nome:'Bata / jaleca de trabalho',tipo:'Vestuário (bata / avental / fato)',periodicidade:'365'},{nome:'Avental impermeável',tipo:'Vestuário (bata / avental / fato)',periodicidade:'180'},{nome:'Calçado de segurança antiderrapante',tipo:'Calçado de segurança',norma:'EN ISO 20345 (SRC)',periodicidade:'365'},{nome:'Casaco térmico para câmaras frigoríficas',tipo:'Vestuário (bata / avental / fato)',norma:'EN 342',periodicidade:'730'}],
+ padaria:[{nome:'Luvas térmicas para forno',tipo:'Proteção das mãos (luvas)',norma:'EN 407',periodicidade:'180'},{nome:'Máscara FFP2 (pó de farinha)',tipo:'Proteção respiratória (máscara)',norma:'EN 149',periodicidade:'1'}],
+ talho:[{nome:'Luvas anticorte em malha de aço',tipo:'Proteção das mãos (luvas)',norma:'EN 1082-1',periodicidade:'730'},{nome:'Avental de malha de aço',tipo:'Vestuário (bata / avental / fato)',norma:'EN ISO 13998',periodicidade:'1095'}],
+ pescado:[{nome:'Luvas anticorte',tipo:'Proteção das mãos (luvas)',norma:'EN 388',periodicidade:'180'},{nome:'Botas de borracha',tipo:'Calçado de segurança',norma:'EN ISO 20347',periodicidade:'365'}],
+ queijaria:[{nome:'Botas brancas impermeáveis',tipo:'Calçado de segurança',norma:'EN ISO 20347',periodicidade:'365'},{nome:'Luvas de proteção química (higienização CIP)',tipo:'Proteção das mãos (luvas)',norma:'EN ISO 374',periodicidade:'90'},{nome:'Óculos de proteção (produtos químicos)',tipo:'Proteção ocular',norma:'EN 166',periodicidade:'730'}],
+ restauracao:[{nome:'Luvas térmicas / pega',tipo:'Proteção das mãos (luvas)',norma:'EN 407',periodicidade:'180'},{nome:'Jaleca e calça de cozinha',tipo:'Vestuário (bata / avental / fato)',periodicidade:'365'}]};
+const GEN_VIDROS=[{local:'Zona de produção',item:'Luminárias / lâmpadas',material:'Vidro',protecao:'Sim'},{local:'Zona de produção',item:'Janelas',material:'Vidro'},{local:'Zona de produção',item:'Visores de equipamentos',material:'Acrílico / plástico duro'},{local:'Zona de produção',item:'Relógio de parede',material:'Acrílico / plástico duro'},{local:'Armazém',item:'Luminárias / lâmpadas',material:'Vidro',protecao:'Sim'},{local:'Câmaras frigoríficas',item:'Luminárias',material:'Vidro',protecao:'Sim'},{local:'Zona de produção',item:'Insectocaçador (tubos UV)',material:'Vidro',protecao:'Sim'},{local:'Laboratório / controlo',item:'Material de laboratório (frascos, pipetas)',material:'Vidro'}];
+const GEN_OBJ=[{tipo:'Objetivo / indicador',descricao:'Todos os manipuladores com formação em higiene e segurança alimentar',meta:'100 % dos manipuladores formados'},{tipo:'Objetivo / indicador',descricao:'Registos diários preenchidos e verificados',meta:'≥ 95 % dos registos previstos'},{tipo:'Objetivo / indicador',descricao:'Reduzir reclamações de clientes',meta:'0 reclamações por corpo estranho ou alergénios'},{tipo:'Comunicação à equipa',descricao:'Reunião mensal de segurança alimentar com a equipa'},{tipo:'Ação de cultura de segurança',descricao:'Afixar regras de higiene e alergénios nas zonas de trabalho'},{tipo:'Inquérito / avaliação da cultura',descricao:'Inquérito anual de cultura de segurança alimentar (Reg. (UE) 2021/382)'},{tipo:'Revisão pela gestão',descricao:'Revisão anual do sistema HACCP pela gerência'}];
+const GEN_VULN=[{tipo:'Fraude alimentar (matéria-prima)',alvo:'Matérias-primas de maior valor (ex.: azeite, mel, leite de ovelha/cabra, queijo DOP, especiarias)',ameaca:'Substituição, diluição ou falsa origem',P:'2',G:'2',medidas:'Fornecedores aprovados, certificados e boletins de análise, análises de autenticidade pontuais'},{tipo:'Fraude alimentar (matéria-prima)',alvo:'Ingredientes com alegações (biológico, sem glúten, DOP/IGP)',ameaca:'Alegação falsa',P:'1',G:'3',medidas:'Certificados válidos do fornecedor, verificação na receção'},{tipo:'Defesa alimentar (instalações / processo)',alvo:'Acesso às instalações',ameaca:'Entrada de pessoas não autorizadas',P:'1',G:'3',medidas:'Portas fechadas, registo de visitantes e prestadores, acompanhamento'},{tipo:'Defesa alimentar (instalações / processo)',alvo:'Armazém de produtos químicos',ameaca:'Contaminação intencional',P:'1',G:'3',medidas:'Armazém fechado à chave, acesso restrito'},{tipo:'Defesa alimentar (instalações / processo)',alvo:'Água / depósito',ameaca:'Contaminação da água',P:'1',G:'3',medidas:'Depósito fechado, análises de água periódicas'},{tipo:'Defesa alimentar (instalações / processo)',alvo:'Produto acabado e expedição',ameaca:'Adulteração',P:'1',G:'3',medidas:'Embalagens invioláveis, veículos fechados, controlo de selos'}];
+function genSources(key){ const secs=S.empresa.sectores||[]; const order=[...secs,...Object.keys(SECT).filter(k=>!secs.includes(k))]; const out=[];
+  const add=(grp,arr,map)=>{ if(arr&&arr.length) out.push({grp,items:arr.map(map)}); };
+  const lab=k=>SECT[k].n+(secs.includes(k)?' · o seu sector':'');
+  if(key==='equipamentos'){ add('Comum',COMUM.equip,x=>x); order.forEach(k=>add(lab(k),SECT[k].equip,x=>x)); }
+  if(key==='planoAnalises'){ add('Comum',COMUM.analises,x=>x); order.forEach(k=>add(lab(k),SECT[k].analises,x=>x)); }
+  if(key==='higPlano'){ add('Comum',COMUM.hig,x=>x); order.forEach(k=>add(lab(k),SECT[k].hig,x=>x)); }
+  if(key==='paramControlo'){ order.forEach(k=>add(lab(k),SECT[k].ctrl,x=>x)); }
+  if(key==='formacao'){ add('Comum',COMUM.form,t=>({tema:t,estado:'Planeada',data:addDays(today(),30)})); order.forEach(k=>add(lab(k),SECT[k].form,t=>({tema:t,estado:'Planeada',data:addDays(today(),30)}))); }
+  if(key==='documentos'){ add('Comum',COMUM.docs,([t,ty])=>({titulo:t,tipo:ty})); order.forEach(k=>add(lab(k),SECT[k].docs,([t,ty])=>({titulo:t,tipo:ty}))); }
+  if(key==='epis'){ add('Comum',GEN_EPIS.comum,x=>x); order.forEach(k=>add(lab(k),GEN_EPIS[k],x=>x)); }
+  if(key==='vidros') add('Inventário típico',GEN_VIDROS,x=>({...x,quantidade:'1',periodicidade:'30',ultimaInspecao:today(),estadoItem:'Intacto'}));
+  if(key==='objetivos') add('Cultura de segurança alimentar',GEN_OBJ,x=>({...x,data:today(),prazo:addDays(today(),365),estado:'Planeado'}));
+  if(key==='vulnerabilidade') add('Fraude e defesa alimentar',GEN_VULN,x=>({...x,data:today(),revisao:addDays(today(),365)}));
+  return out; }
+const GEN_KEY={equipamentos:r=>r.nome,planoAnalises:r=>r.amostra,higPlano:r=>(r.area||'')+'|'+(r.oque||''),paramControlo:r=>r.nome,formacao:r=>r.tema,documentos:r=>r.titulo,epis:r=>r.nome,vidros:r=>r.local+'|'+r.item,objetivos:r=>r.descricao,vulnerabilidade:r=>r.alvo+'|'+r.ameaca};
+const GEN=Object.fromEntries(Object.keys(GEN_KEY).map(k=>[k,1]));
+const GEN_LABEL=(key,r)=>key==='higPlano'?(r.oque+' ('+r.area+') · '+r.frequencia):key==='planoAnalises'?(r.amostra+' · '+r.parametros):key==='paramControlo'?(r.nome+(r.lmin!=null||r.lmax!=null?' · '+[r.lmin!=null?'≥ '+r.lmin:'',r.lmax!=null?'≤ '+r.lmax:''].filter(Boolean).join(' e ')+' '+(r.unidade||''):'')):key==='equipamentos'?(r.nome+(r.tmin!=null||r.tmax!=null?' · '+(r.tmin??'—')+' a '+(r.tmax??'—')+' °C':'')):key==='vidros'?(r.local+' — '+r.item):key==='vulnerabilidade'?(r.alvo+' — '+r.ameaca):key==='epis'?(r.nome+(r.norma?' · '+r.norma:'')):(r.tema||r.titulo||r.descricao||r.nome);
+function genPick(key){ const src=genSources(key); const have=new Set(D(key).map(r=>norm(GEN_KEY[key](r)))); const seen=new Set(); const flat=[];
+  const body='<p class="sm">Modelos genéricos para «'+esc(M[key].t)+'». Os do seu sector vêm marcados. Depois de criados pode alterar tudo.</p>'+src.map(g=>{ const its=g.items.filter(r=>{ const kk=norm(GEN_KEY[key](r)); if(seen.has(kk)) return false; seen.add(kk); return true; }); if(!its.length) return '';
+    return '<h3 style="margin:12px 0 4px">'+esc(g.grp)+'</h3>'+its.map(r=>{ const i=flat.push(r)-1; const ex=have.has(norm(GEN_KEY[key](r))); const mine=g.grp==='Comum'||/o seu sector|típico|Cultura|Fraude/.test(g.grp);
+      return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-gi="'+i+'" style="width:auto;margin-top:3px"'+(ex?' disabled':mine?' checked':'')+'><span class="sm">'+esc(GEN_LABEL(key,r))+(ex?' <span class="bd">já existe</span>':'')+'</span></label>'; }).join(''); }).join('');
+  modal('Modelos genéricos — '+M[key].t,body||'<p class="mut">Sem modelos para este menu.</p>',[{l:'Cancelar',fn:()=>closeModal(1)},{l:'Criar selecionados',c:'p',fn:r=>{
+    const sel=[...r.querySelectorAll('input[data-gi]:checked')].map(x=>flat[+x.dataset.gi]); if(!sel.length){ toast('Escolha pelo menos um'); return; }
+    sel.forEach(x=>{ const rec={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:''}; M[key].f.forEach(f=>{ if(f.def) rec[f.k]=f.def(); }); Object.entries(x).forEach(([k,v])=>rec[k]=v==null?'':String(v)); if(key==='equipamentos'){ rec.ativo='Sim'; if(M.equipamentos.compute) M.equipamentos.compute(rec); delete rec._limDef; } D(key).push(rec); });
+    save(); closeModal(1); render(); toast(sel.length+' registo(s) criado(s) a partir dos modelos genéricos',5000); }}],1); }
+/* ---------- Impressos em branco ---------- */
+const BLANK_OK=k=>!!M[k]&&!['equipa','etapas','produtos','materias','receitas','documentos','modelos','fornecedores','epis','vidros','objetivos','vulnerabilidade','paramControlo','planoAnalises','higPlano','verificacoes'].includes(k)||k==='modelos';
+function blankHead(titulo,cod){ return '<table style="margin-bottom:8px"><tr><td style="width:60%"><b>'+esc(S.empresa.nome||'')+'</b><br>'+esc(titulo)+'</td><td>'+(cod?'Código: '+esc(cod)+'<br>':'')+'Mês / ano: ________________<br>Folha nº: ______</td></tr></table>'; }
+function blankSign(){ return '<p style="margin-top:14px">Verificado por: ______________________________ Data: ____/____/______ Assinatura: ______________________</p>'; }
+function doPrint(h){ const el=document.getElementById('printOne'); el.innerHTML=h; document.body.classList.add('print-one'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-one'),500); },150); }
+function printBlank(key){ const m=M[key]; const skip=['files','sig','lines','dyn']; const cols=m.f.filter(f=>!skip.includes(f.t)&&!['obs','lotesMP','destino','anexos','modoCalc','qtdBase','abater','horas'].includes(f.k)).slice(0,8);
+  let info=''; if(key==='temperaturas'){ const fr=D('equipamentos').filter(isFrio); info='<p class="sm">Equipamentos: '+fr.map(e=>esc(e.nome)+' ('+M.equipamentos.virt.limites.fn(e)+(e.freqTemp?', '+esc(e.freqTemp):'')+')').join(' · ')+'</p>'; }
+  if(key==='higRegisto') info='<p class="sm">Tarefas: '+D('higPlano').map(h=>esc(h.oque+' ('+h.area+') — '+(h.frequencia||''))).join(' · ')+'</p>';
+  if(key==='controlos') info='<p class="sm">Parâmetros: '+D('paramControlo').map(p=>esc(p.nome)+' '+M.paramControlo.virt.limites.fn(p)).join(' · ')+'</p>';
+  const h='<h1>'+esc(m.t)+'</h1>'+blankHead(m.t)+info+'<table><thead><tr>'+cols.map(c=>'<th>'+esc(c.l.replace(/\s*\(.*\)$/,''))+'</th>').join('')+'<th>Rubrica</th></tr></thead><tbody>'+Array.from({length:22},()=>'<tr>'+cols.map(()=>'<td style="height:26px"></td>').join('')+'<td></td></tr>').join('')+'</tbody></table>'+
+    '<p class="sm">Em caso de não conformidade, descrever a ação corretiva no verso ou no registo de não conformidades.</p>'+blankSign();
+  doPrint(h); }
+function printBlankModelo(md){ const campos=(md.campos||[]).filter(c=>c.nome); if(!campos.length){ toast('O modelo não tem campos'); return; }
+  const itens=String(md.itens||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const lim=c=>(c.tipo||'Número')==='Número'&&(c.min!==''&&c.min!=null||c.max!==''&&c.max!=null)?'<br><small>'+(c.min!==''&&c.min!=null&&c.max!==''&&c.max!=null?c.min+' a '+c.max:c.max!==''&&c.max!=null?'≤ '+c.max:'≥ '+c.min)+' '+esc(c.unidade||'')+'</small>':c.tipo==='Conforme / Não conforme'?'<br><small>C / NC</small>':c.tipo==='Sim / Não'?'<br><small>S / N</small>':c.unidade?'<br><small>'+esc(c.unidade)+'</small>':'';
+  const rows=itens.length?Array.from({length:Math.max(1,Math.floor(22/itens.length))},()=>itens).flat():Array.from({length:22},()=>'');
+  const h='<h1>'+esc(md.nome||'Registo')+'</h1>'+blankHead(md.nome||'',md.codigo)+(md.instrucoes?'<p class="sm">'+esc(md.instrucoes)+'</p>':'')+
+    '<table><thead><tr><th>Data / hora</th>'+(itens.length?'<th></th>':'')+campos.map(c=>'<th>'+esc(c.nome)+lim(c)+'</th>').join('')+'<th>Rubrica</th></tr></thead><tbody>'+rows.map(it=>'<tr><td style="height:26px;width:90px"></td>'+(itens.length?'<td><b>'+esc(it)+'</b></td>':'')+campos.map(()=>'<td></td>').join('')+'<td></td></tr>').join('')+'</tbody></table>'+
+    '<p class="sm">Ação corretiva (se não conforme): ____________________________________________________________</p>'+blankSign();
+  doPrint(h); }
+function pickBlankModelo(){ const ms=D('modelos').filter(m=>m.ativo!=='Não'); if(!ms.length){ toast('Ainda não há modelos de registo'); return; }
+  const root=modal('Imprimir impresso em branco',ms.map((m,i)=>'<label style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><input type="radio" name="pbm" value="'+i+'" style="width:auto"'+(i===0?' checked':'')+'> '+esc(m.nome)+'</label>').join(''),
+    [{l:'Cancelar',fn:()=>closeModal(1)},{l:'Imprimir',c:'p',fn:r=>{ const i=+r.querySelector('input[name=pbm]:checked').value; closeModal(1); printBlankModelo(ms[i]); }}],1); }
 function genericValidate(key,r){
   const m=M[key];
   for(const f of m.f){ const v=r[f.k]; if(v==null||v==='') continue;
@@ -1794,6 +1856,8 @@ function bindView(key){
     if(b('newscan')) b('newscan').onclick=()=>{ const r=openForm('rececao'); openScanner((code,msg)=>applyScan(r,code,msg),true); };
     if(b('tempall')) b('tempall').onclick=tempAll;
     if(b('proddia')) b('proddia').onclick=prodDia;
+    if(b('gen')) b('gen').onclick=()=>genPick(key);
+    if(b('blank')) b('blank').onclick=()=>key==='modelos'||key==='registos'?pickBlankModelo():printBlank(key);
     if(b('modlib')) b('modlib').onclick=modLib;
     if(b('modimp')) b('modimp').onclick=()=>{ const i=document.createElement('input'); i.type='file'; i.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf,image/*'; i.onchange=()=>{ if(i.files[0]) importModelo(i.files[0]); }; i.click(); };
     const q=v.querySelector('#q'); if(q) q.oninput=()=>{ const t=q.value.toLowerCase(); v.querySelectorAll('tbody tr').forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(t)?'':'none'); };
@@ -2064,7 +2128,7 @@ function inspItems(){
   add('HACCP','Plano HACCP aprovado e revisto há menos de 12 meses',!!E.dataPlano&&daysTo(E.dataPlano)>-365,'plano',E.dataPlano?'revisto em '+fDate(E.dataPlano):'sem data');
   add('HACCP','Fluxograma confirmado no local',!!E.fluxoVerificado,'empresa',E.fluxoVerificado?fDate(E.fluxoVerificado):'');
   const ha=computeHA(); add('HACCP','PCC com limites, monitorização, ações corretivas e validação',ha.pccs.every(p=>p.pd.limite&&p.pd.monit&&p.pd.acao&&p.pd.validacao),'analise',ha.pccs.length+' PCC');
-  const pr=D('pccRegisto').filter(d30).length; add('HACCP','Registos de monitorização dos PCC (30 dias)',!ha.pccs.length||pr>0,'pccRegisto',pr+' registo(s)');
+  const pr=D('pccRegisto').filter(d30).length+D('registos').filter(r=>{ const m=D('modelos').find(x=>x.id===r.modelo); return m&&m.pcc&&d30(r); }).length; add('HACCP','Registos de monitorização dos PCC (30 dias)',!ha.pccs.length||pr>0,'pccRegisto',pr+' registo(s)');
   const frio=D('equipamentos').filter(isFrio); const tf=frio.filter(e=>D('temperaturas').some(t=>t.equipamento===e.id&&d30(t))).length;
   add('Temperaturas','Registo de temperaturas de todo o frio (30 dias)',frio.length>0&&tf===frio.length,'temperaturas',tf+' de '+frio.length+' equipamentos');
   const tnc=D('temperaturas').filter(t=>d30(t)&&t.conforme==='Não conforme'&&!(t.acao||t._nc)).length; add('Temperaturas','Desvios de temperatura com ação corretiva',tnc===0,'temperaturas',tnc?tnc+' sem ação':'');
@@ -2208,7 +2272,7 @@ function alerts(){
   D('materias').forEach(m=>{ if(num(m.stockMin)==null) return; const t=rnd(lots.filter(l=>l.materia===m.id).reduce((s,l)=>s+l.disp,0)); if(t<+m.stockMin) add('info','Stock abaixo do mínimo: '+m.nome+' ('+t+' / '+m.stockMin+' '+(m.unidade||'')+')','stock'); });
   D('lotes').forEach(l=>{ const d=daysTo(l.validade); if(d!=null&&d>=0&&d<=2) add('info','Lote de produto '+l.lote+' expira em '+d+' dia(s)','lotes'); });
   D('colaboradores').filter(c=>c.ativo!=='Não').forEach(c=>D('epis').filter(e=>num(e.periodicidade)).forEach(e=>{ const last=D('epiEntregas').filter(x=>x.colaborador===c.id&&(x.itens||[]).some(i=>i.epi===e.id)).sort((x,y)=>y.data.localeCompare(x.data))[0]; if(last&&daysTo(addDays(last.data,e.periodicidade))<0) add('warn','Substituição de EPI prevista: '+e.nome+' — '+c.nome,'epiEntregas'); }));
-  ['temperaturas','pccRegisto','controlos','higRegisto'].forEach(k=>{ if(!D(k).length) return; const lv=lastVerif(k); const desde=lv?lv.ate:D(k).map(recDate).sort()[0]; if(daysTo(desde)<-31) add('info','Registos de «'+M[k].t+'» por verificar e assinar desde '+fDate(desde),k); });
+  ['temperaturas','controlos','higRegisto'].forEach(k=>{ if(!D(k).length) return; const lv=lastVerif(k); const desde=lv?lv.ate:D(k).map(recDate).sort()[0]; if(daysTo(desde)<-31) add('info','Registos de «'+M[k].t+'» por verificar e assinar desde '+fDate(desde),k); });
   D('reclamacoes').filter(r=>r.estado!=='Fechada'&&r.estado!=='Respondida').forEach(r=>{ const d=daysTo(r.data); if(d!=null&&d<-15) add('warn','Reclamação sem resposta há mais de 15 dias: '+r.cliente,'reclamacoes'); else add('info','Reclamação em aberto: '+r.cliente+' ('+(r.tipo||'')+')','reclamacoes'); });
   if((D('lotes').length||D('rececao').length)&&!D('retiradas').some(r=>r.tipo==='Simulacro de rastreabilidade'&&daysTo(r.data)>-365)) add('warn','Sem simulacro de rastreabilidade nos últimos 12 meses','retiradas');
   if(S.empresa.dataPlano&&daysTo(S.empresa.dataPlano)<-365) add('warn','O plano HACCP não é revisto há mais de 12 meses','empresa');
@@ -2221,8 +2285,8 @@ function alerts(){
 }
 function viewPainel(){
   const al=alerts().filter(x=>!/^(Em atraso: |Sem registo de temperatura hoje|Registo diário por preencher|Controlo diário por registar)/.test(x.t)&&!/em atraso|a vencer|caduca|expira/i.test(x.t)&&x.k!=='nc'&&x.k!=='reclamacoes'); const ha=computeHA(); const hoje=today(); if(!S.empresa.nome&&!Object.values(S.data).some(x=>x.length)&&lvl('empresa')>=3) return viewBoasVindas();
-  const recHoje=['temperaturas','rececao','higRegisto','pccRegisto','controlos','lotes'].reduce((s,k)=>s+D(k).filter(r=>(r.dt||r.data||'').startsWith(hoje)).length,0);
-  const last30=[...D('temperaturas'),...D('pccRegisto'),...D('rececao'),...D('controlos')].filter(r=>daysTo((r.dt||r.data||'').slice(0,10))>=-30&&r.conforme);
+  const recHoje=['temperaturas','rececao','higRegisto','pccRegisto','controlos','registos','lotes'].reduce((s,k)=>s+D(k).filter(r=>(r.dt||r.data||'').startsWith(hoje)).length,0);
+  const last30=[...D('temperaturas'),...D('pccRegisto'),...D('rececao'),...D('controlos'),...D('registos')].filter(r=>daysTo((r.dt||r.data||'').slice(0,10))>=-30&&r.conforme);
   const pct=last30.length?Math.round(100*last30.filter(r=>r.conforme==='Conforme').length/last30.length):null;
   const ncA=D('nc').filter(n=>n.estado!=='Fechada').length; const ch=implChecks(); const impl=Math.round(100*ch.filter(x=>x.ok).length/ch.length);
   let h='<h1>Painel</h1><p class="sub">'+esc(S.empresa.nome||'')+' · '+new Date().toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p>';
@@ -2250,8 +2314,7 @@ function todayTasks(){ const hoje=today(); const T=[];
   D('paramControlo').forEach(c=>push('Controlo — '+c.nome,freqStatus(c.frequencia,D('controlos').filter(r=>r.param===c.id).map(r=>r.dt),c.horas),'controlos',()=>openForm('controlos',null,{param:c.id})));
   D('modelos').filter(m=>m.ativo!=='Não').forEach(m=>push(m.nome,freqStatus(m.frequencia,D('registos').filter(r=>r.modelo===m.id).map(r=>r.dt),m.horas),'registos',()=>openForm('registos',null,{modelo:m.id})));
   const fv=S.empresa.freqVerif||{}; Object.keys(VERIF_MODS).forEach(k=>{ if(!fv[k]||!D(k).length) return; push('Verificar e assinar — '+VERIF_MODS[k],freqStatus(fv[k],D('verificacoes').filter(v=>v.registo===k).map(v=>v.ate||v.data),''),'verificacoes',()=>{ const lv=lastVerif(k); const ds=D(k).map(recDate).filter(Boolean).sort(); openForm('verificacoes',null,{registo:k,de:lv?addDays(lv.ate,1):(ds[0]||today()),ate:today()}); }); });
-  const lh=D('lotes').filter(l=>l.data===hoje); const pccs=computeHA().pccs;
-  if(lh.length&&pccs.length) T.push({t:'Monitorizar os PCC da produção de hoje',sub:lh.length+' lote(s) · '+pccs.map(p=>p.code).join(', '),done:D('pccRegisto').filter(r=>(r.dt||'').startsWith(hoje)).length>=pccs.length,k:'pccRegisto',can:lvl('pccRegisto')>=2,fn:()=>openForm('pccRegisto',null,{lote:lh[lh.length-1].lote})});
+
   return T.filter(x=>lvl(x.k)>=1); }
 function pendentes(){ const P=[]; const add=(lvl_,t,k)=>{ if(lvl(k)>=1) P.push({lvl:lvl_,t,k}); };
   D('nc').filter(n=>n.estado!=='Fechada').forEach(n=>{ const late=n.prazo&&daysTo(n.prazo)<0; add(late||n.gravidade==='Crítica'?'danger':'warn','NC '+(n.estado||'Aberta').toLowerCase()+(late?' — prazo ultrapassado':'')+': '+String(n.descricao||'').slice(0,90),'nc'); });
