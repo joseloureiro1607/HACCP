@@ -37,6 +37,21 @@ nav h6{margin:14px 18px 4px;font-size:11px;letter-spacing:.06em;text-transform:u
 nav a{display:flex;justify-content:space-between;align-items:center;padding:7px 18px;color:var(--ink);text-decoration:none;font-size:14px;border-left:3px solid transparent}
 nav a:hover{background:var(--pri2)}
 nav a.on{background:var(--pri2);border-left-color:var(--pri);font-weight:600}
+nav{padding-top:0}
+nav .grp{padding:2px 0 8px;border-bottom:1px solid #cfd5d8}
+nav .grp:nth-of-type(odd){background:#e3e7ea}
+nav .grp:nth-of-type(even){background:#f7f8f9}
+nav .grp h6{color:#36423f;font-weight:700;margin-top:10px}
+nav .grp a:hover{background:rgba(31,74,61,.10)}
+@media (prefers-color-scheme:dark){nav .grp{border-bottom-color:#2a3633}nav .grp:nth-of-type(odd){background:#1f2a27}nav .grp:nth-of-type(even){background:#151d1a}nav .grp h6{color:#b9c7c2}}
+.tnav{background:rgba(255,255,255,.14);border:0;color:#fff;font-size:18px;line-height:1;padding:6px 10px;border-radius:8px;cursor:pointer}
+.tnav:disabled{opacity:.35;cursor:default}
+body.locked .tnav{display:none!important}
+.crumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:13px;color:var(--mut)}
+.crumb .btn{padding:5px 10px;font-size:13px}
+.top>div:not(#tUser){min-width:0;flex:1 1 auto;overflow:hidden}
+.top>div:not(#tUser) b,.top>div:not(#tUser) small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:600px){.top{gap:6px;padding:8px 10px}.tnav{padding:6px 8px;font-size:16px}#tUser span{display:none}.top .sp{display:none}}
 nav a .cnt{font-size:11px;color:var(--mut)}
 main{flex:1;min-width:0;padding:20px 24px 80px;max-width:1300px}
 @media (max-width:860px){
@@ -166,6 +181,8 @@ pre.txt{white-space:pre-wrap;font-size:12px;max-height:220px;overflow:auto;backg
 <body>
 <div class="top">
   <button class="burger" id="burger" aria-label="Menu">&#9776;</button>
+  <button class="tnav" id="tBack" title="Voltar ao menu anterior" aria-label="Voltar">&#8592;</button>
+  <button class="tnav" id="tHome" title="Página principal" aria-label="Página principal">&#8962;</button>
   <div><b id="tName">Gestão HACCP</b><small id="tSub">Sistema de Segurança Alimentar</small></div>
   <span class="sp"></span><button id="tInstall" class="tinst" hidden>Instalar app</button><div id="tUser"></div>
 </div>
@@ -434,6 +451,57 @@ function allocate(materia,need,lots,dataProd){
   const out=[]; for(const l of av){ if(need<=1e-9) break; const q=rnd(Math.min(need,l.disp)); out.push({linha:l.id,materia,lote:l.lote,qtd:q}); l.disp=rnd(l.disp-q); need=rnd(need-q); }
   return {out,falta:need>1e-9?rnd(need):0};
 }
+const TIPOS_CAMPO=['Número','Texto','Conforme / Não conforme','Sim / Não','Data','Hora','Lista de opções'];
+/* ---------- Modelos de registo: campos dinâmicos ---------- */
+function dynCampos(modeloId,snap){ if(snap&&snap.length) return snap; const m=D('modelos').find(x=>x.id===modeloId); return m?(m.campos||[]).filter(c=>c.nome).map(c=>({...c,tipo:c.tipo||'Número'})):[]; }
+function dynItens(modeloId,snapI){ const m=D('modelos').find(x=>x.id===modeloId); const t=snapI!=null?snapI:(m?m.itens||'':''); const a=String(t).split('\n').map(x=>x.trim()).filter(Boolean); return a.length?a:['']; }
+function dynInput(c,v){ const a='data-cid="'+esc(c.id)+'"';
+  if(c.tipo==='Conforme / Não conforme') return '<select '+a+'><option value="">—</option>'+['Conforme','Não conforme'].map(o=>'<option'+(o===v?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+  if(c.tipo==='Sim / Não') return '<select '+a+'><option value="">—</option>'+['Sim','Não'].map(o=>'<option'+(o===v?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+  if(c.tipo==='Lista de opções'){ const o=String(c.opcoes||'').split(';').map(x=>x.trim()).filter(Boolean); return '<select '+a+'><option value="">—</option>'+o.map(x=>'<option'+(x===v?' selected':'')+'>'+esc(x)+'</option>').join('')+(v&&!o.includes(v)?'<option selected>'+esc(v)+'</option>':'')+'</select>'; }
+  if(c.tipo==='Data') return '<input type="date" '+a+' value="'+esc(v||'')+'">';
+  if(c.tipo==='Hora') return '<input type="time" '+a+' value="'+esc(v||'')+'">';
+  if(c.tipo==='Texto') return '<input '+a+' value="'+esc(v||'')+'">';
+  return '<input type="number" step="any" inputmode="decimal" '+a+' data-min="'+esc(c.min??'')+'" data-max="'+esc(c.max??'')+'" value="'+esc(v??'')+'">'; }
+function dynMark(el){ if(!el.dataset.cid) return; let bad=false; const v=el.value;
+  if(el.tagName==='SELECT') bad=v==='Não conforme'; else if(el.type==='number'&&v!==''&&!isNaN(+v)){ if((el.dataset.min!==''&&+v<+el.dataset.min)||(el.dataset.max!==''&&+v>+el.dataset.max)) bad=true; }
+  el.style.borderColor=bad?'var(--bad)':''; el.style.boxShadow=bad?'0 0 0 2px rgba(200,40,40,.25)':''; }
+function renderDyn(root,modeloId,val,snap,snapI){ const box=root.querySelector('[data-dyn="valores"]'); if(!box) return;
+  const m=D('modelos').find(x=>x.id===modeloId); const campos=dynCampos(modeloId,snap); const itens=dynItens(modeloId,snap?snapI:null);
+  if(!modeloId||!campos.length){ box.innerHTML='<span class="sm mut">'+(D('modelos').length?'Escolha o modelo de registo.':'Ainda não há modelos. <a href="#/modelos" data-close>Criar ou importar modelos</a>.')+'</span>'; return; }
+  const byItem={}; (val||[]).forEach(x=>byItem[x.item||'']=x.v||{});
+  box.innerHTML=(m&&m.instrucoes?'<p class="sm" style="background:var(--bg);padding:8px 10px;border-radius:8px;margin:0 0 8px">'+esc(m.instrucoes)+'</p>':'')+
+    itens.map(it=>'<div class="dynrow" data-item="'+esc(it)+'" style="border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0">'+(it?'<b class="sm">'+esc(it)+'</b>':'')+
+      '<div class="grid" style="margin-top:4px">'+campos.map(c=>{ const lim=(c.tipo||'Número')==='Número'&&(num(c.min)!=null||num(c.max)!=null)?' <span class="mut">('+(num(c.min)!=null&&num(c.max)!=null?c.min+' a '+c.max:num(c.max)!=null?'≤ '+c.max:'≥ '+c.min)+(c.unidade?' '+esc(c.unidade):'')+')</span>':(c.unidade&&c.tipo==='Número'?' <span class="mut">('+esc(c.unidade)+')</span>':'');
+        return '<label class="f"><span>'+esc(c.nome)+lim+'</span>'+dynInput(c,(byItem[it]||{})[c.id])+'</label>'; }).join('')+'</div></div>').join('');
+  box.querySelectorAll('[data-cid]').forEach(dynMark); }
+function readDyn(root){ return [...root.querySelectorAll('[data-dyn="valores"] .dynrow')].map(el=>({item:el.dataset.item||'',v:Object.fromEntries([...el.querySelectorAll('[data-cid]')].map(x=>[x.dataset.cid,x.value.trim()]))})); }
+function dynTable(r){ const c=r._campos||dynCampos(r.modelo); const rows=(r.valores||[]); if(!c.length||!rows.length) return '';
+  const hasI=rows.some(x=>x.item); return '<table><thead><tr>'+(hasI?'<th></th>':'')+c.map(cc=>'<th>'+esc(cc.nome)+(cc.unidade?' ('+esc(cc.unidade)+')':'')+'</th>').join('')+'</tr></thead><tbody>'+rows.map(x=>'<tr>'+(hasI?'<td><b>'+esc(x.item)+'</b></td>':'')+c.map(cc=>'<td>'+esc((x.v||{})[cc.id]||'')+'</td>').join('')+'</tr>').join('')+'</tbody></table>'; }
+const ING_MODOS=['Proporcional','Fixa','% do ingrediente base'];
+/* Calcula as quantidades de uma receita.
+   modo 'qtd'  → valor = quantidade final a produzir (na unidade do rendimento)
+   modo 'base' → valor = quantidade disponível do ingrediente base
+   Devolve linhas com liq (quantidade utilizada/limpa) e bruto (a abater do stock, corrigida pelo aproveitamento). */
+function recipeCalc(rc,modo,valor){
+  if(!rc) return {erro:'Escolha a receita.'};
+  if(num(valor)==null||+valor<=0) return {erro:modo==='base'?'Indique a quantidade do ingrediente base.':'Indique a quantidade a produzir.'};
+  const ing=(rc.ingredientes||[]).filter(i=>i.materia&&num(i.qtd)!=null);
+  const baseL=rc.base?ing.find(i=>i.materia===rc.base&&(i.modo||'Proporcional')==='Proporcional'):null;
+  let fac;
+  if(modo==='base'){ if(!baseL||!(+baseL.qtd)) return {erro:'Esta receita não tem ingrediente base definido.'}; fac=+valor/+baseL.qtd; }
+  else { if(!num(rc.rendimento)) return {erro:'A receita não tem rendimento definido.'}; fac=+valor/+rc.rendimento; }
+  const baseQ=baseL?+baseL.qtd*fac:null; const avisos=[];
+  const lines=ing.map(i=>{ const md=i.modo||'Proporcional'; let liq;
+    if(md==='Fixa') liq=+i.qtd; else if(md==='% do ingrediente base'){ if(baseQ==null){ avisos.push(lbl('materias',i.materia)+': falta o ingrediente base'); return null; } liq=baseQ*+i.qtd/100; } else liq=+i.qtd*fac;
+    const ap=num(i.aprov)!=null&&+i.aprov>0&&+i.aprov<=100?+i.aprov:100;
+    return {materia:i.materia,liq:rnd(liq),bruto:rnd(liq*100/ap),aprov:ap}; }).filter(Boolean);
+  return {fac,prev:num(rc.rendimento)!=null?rnd(+rc.rendimento*fac):null,lines,avisos};
+}
+function aprovOf(rcId,materia){ const rc=D('receitas').find(x=>x.id===rcId); const i=rc&&(rc.ingredientes||[]).find(x=>x.materia===materia); return i&&num(i.aprov)!=null&&+i.aprov>0?+i.aprov:100; }
+function dispOf(materia,excl){ return rnd(stockLots(excl).filter(l=>l.materia===materia&&l.disp>0&&(!l.validade||l.validade>=today())).reduce((s,l)=>s+l.disp,0)); }
+function newLoteCode(prod,data){ const p=D('produtos').find(x=>x.id===prod); if(!p) return ''; const b=(p.codigo||p.nome.normalize('NFD').replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase())+String(data||today()).replace(/-/g,'').slice(2);
+  let c=b,n=2; const ex=new Set(D('lotes').map(x=>String(x.lote).toLowerCase())); while(ex.has(c.toLowerCase())) c=b+'-'+(n++); return c; }
 const unidOf=id=>{ const m=D('materias').find(x=>x.id===id); return m&&m.unidade||''; };
 function recipeAllergens(rc){ const s=new Set(); (rc.ingredientes||[]).forEach(i=>{ const m=D('materias').find(x=>x.id===i.materia); (m&&m.alergenos||[]).forEach(a=>s.add(a)); }); return [...s]; }
 
@@ -442,7 +510,10 @@ function recipeAllergens(rc){ const s=new Set(); (rc.ingredientes||[]).forEach(i
    Tipos: text textarea number date dt sel multi ref refm lines files
    ===================================================================== */
 const optsRef=(k,filter)=>()=>D(k).filter(filter||(()=>true)).map(r=>({v:r.id,l:M[k].label(r)}));
-const isFrio=e=>e.ativo!=='Não' && ((e.tmin!==''&&e.tmin!=null)||(e.tmax!==''&&e.tmax!=null));
+const FRIO_RX=/c[aâ]mara|frigor|congel|arca|vitrine|refriger|abatedor|frio|expositor|bancada refrig|cave|adega|t[uú]nel/i;
+const hasLim=e=>(e.tmin!==''&&e.tmin!=null)||(e.tmax!==''&&e.tmax!=null);
+const isFrio=e=>!!e&&e.ativo!=='Não' && (hasLim(e)||/^Frio/.test(e.tipo||'')||(!e.tipo||e.tipo==='Outro')&&FRIO_RX.test(e.nome||''));
+const LIM_DEF={'Frio positivo':{tmin:'0',tmax:'5'},'Frio negativo':{tmin:'',tmax:'-18'}};
 const lotOpts=()=>stockLots().map(l=>({v:l.id,l:lbl('materias',l.materia)+' — lote '+l.lote+' (disp. '+l.disp+' '+unidOf(l.materia)+')'}));
 
 const M={
@@ -473,11 +544,18 @@ const M={
      {k:'parametros',l:'Parâmetros (temperatura, tempo…)'},{k:'descricao',l:'Descrição',t:'textarea'},
      {k:'produtos',l:'Produtos abrangidos (vazio = todos)',t:'refm',ref:'produtos'}],
   list:['processo','ordem','nome','tipo','parametros']},
- receitas:{t:'Receitas / fichas técnicas',d:'Composição de cada produto. Ao registar produção, o stock das matérias-primas é abatido automaticamente (FEFO).',label:r=>r.nome,
-  f:[{k:'nome',l:'Nome da receita',req:1},{k:'produto',l:'Produto final',t:'ref',ref:'produtos'},{k:'rendimento',l:'Rendimento (quantidade produzida)',t:'number',req:1},{k:'unidade',l:'Unidade do rendimento',t:'sel',o:UNID,def:()=>'un'},
-     {k:'ingredientes',l:'Ingredientes (quantidade para o rendimento indicado, na unidade de stock)',t:'lines',req:1,cols:[{k:'materia',l:'Matéria-prima',t:'ref',ref:'materias',big:1},{k:'qtd',l:'Quantidade',t:'number'}],hint:r=>r.materia?'Unidade: '+unidOf(r.materia):''},
+ receitas:{t:'Receitas / fichas técnicas',d:'Composição de cada produto. Cada ingrediente pode ser proporcional ao que vai produzir, uma quantidade fixa por produção, ou uma percentagem do ingrediente base (ex.: % sobre a farinha). O aproveitamento (%) converte o peso limpo no peso comprado: 10 kg de batata descascada com 80 % de aproveitamento abatem 12,5 kg ao stock.',label:r=>r.nome,
+  f:[{k:'nome',l:'Nome da receita',req:1},{k:'produto',l:'Produto final',t:'ref',ref:'produtos'},{k:'rendimento',l:'Rendimento — quantidade final obtida com esta receita',t:'number',req:1},{k:'unidade',l:'Unidade do rendimento',t:'sel',o:[...UNID,'refeições','doses','porções','fornadas'],def:()=>'un'},
+     {k:'base',l:'Ingrediente base (opcional — para produzir a partir dele, ex.: farinha, leite, carne)',t:'ref',ref:'materias'},
+     {k:'ingredientes',l:'Ingredientes (quantidade limpa / utilizada, na unidade de stock)',t:'lines',req:1,cols:[{k:'materia',l:'Matéria-prima',t:'ref',ref:'materias',big:1},{k:'qtd',l:'Quantidade',t:'number'},{k:'modo',l:'Cálculo',t:'sel',o:ING_MODOS,def:'Proporcional'},{k:'aprov',l:'Aproveitamento %',t:'number',def:'100'}],
+       hint:r=>{ if(!r.materia) return ''; const u=unidOf(r.materia); const ap=num(r.aprov); let t='Unidade: '+(u||'—'); if(r.modo==='% do ingrediente base') t+=' · quantidade em % do ingrediente base'; else if(r.modo==='Fixa') t+=' · igual em qualquer quantidade produzida'; if(ap!=null&&ap>0&&ap<100&&num(r.qtd)!=null&&r.modo!=='% do ingrediente base') t+=' · abate ao stock '+rnd(+r.qtd*100/ap)+' '+u+' (bruto)'; return t; }},
      {k:'modo',l:'Modo de preparação / parâmetros',t:'textarea'}],
   list:['nome','produto','rendimento','ningr','alerg'],
+  validate:r=>{ const ing=(r.ingredientes||[]).filter(i=>i.materia);
+    if(ing.some(i=>i.modo==='% do ingrediente base')&&!ing.some(i=>i.materia===r.base&&(i.modo||'Proporcional')==='Proporcional')) return 'Há ingredientes em «% do ingrediente base»: escolha o ingrediente base e inclua-o na lista como «Proporcional».';
+    if(r.base&&!ing.some(i=>i.materia===r.base)) return 'O ingrediente base tem de estar na lista de ingredientes.';
+    for(const i of ing){ if(num(i.qtd)!=null&&+i.qtd<0) return 'Quantidades não podem ser negativas.'; if(num(i.aprov)!=null&&(+i.aprov<=0||+i.aprov>100)) return 'O aproveitamento tem de estar entre 1 e 100 %.'; }
+    return null; },
   virt:{ningr:{l:'Ingredientes',fn:r=>(r.ingredientes||[]).length},alerg:{l:'Alergénios',fn:r=>esc(recipeAllergens(r).join(', '))},rendimento:{l:'Rendimento',fn:r=>esc((r.rendimento||'')+' '+(r.unidade||''))}}},
 
  rececao:{t:'Receção de mercadorias',d:'Uma receção por documento (fatura/guia), com várias linhas. Pode ler códigos de barras GS1/EAN ou importar a fatura em PDF/foto.',label:r=>fDate(r.data)+' '+lbl('fornecedores',r.fornecedor),sort:'data',
@@ -499,34 +577,51 @@ const M={
      if(r.decisao==='Rejeitado') p.push('mercadoria rejeitada');
      r.conforme=p.length?'Não conforme':'Conforme'; r._prob=p.join('; '); },
   nc:r=>r.conforme==='Não conforme'?'Receção não conforme ('+lbl('fornecedores',r.fornecedor)+(r.documento?' / '+r.documento:'')+'): '+r._prob:null},
- lotes:{t:'Produção e lotes',d:'Registo de produção. Com receita, o stock é abatido (primeiro a expirar, primeiro a sair) e os lotes de matéria-prima ficam registados para a rastreabilidade.',label:r=>r.lote,sort:'data',
-  f:[{k:'data',l:'Data de produção',t:'date',req:1,def:today},{k:'produto',l:'Produto',t:'ref',ref:'produtos',req:1},{k:'receita',l:'Receita',t:'ref',ref:'receitas'},{k:'lote',l:'Lote',req:1},
-     {k:'quantidade',l:'Quantidade produzida',t:'number'},{k:'validade',l:'Validade',t:'date'},{k:'abater',l:'Abater stock pela receita',t:'sel',o:['Sim','Não'],def:()=>'Sim'},
+ lotes:{t:'Produção e lotes',d:'Registo de produção. Escolha a receita e diga quanto quer produzir (ex.: 10 refeições) ou quanto tem do ingrediente base — as quantidades são calculadas; ou escolha «Manual» e escreva-as. O stock é abatido pelo peso bruto (primeiro a expirar, primeiro a sair) e os lotes usados ficam registados para a rastreabilidade.',label:r=>r.lote,sort:'data',
+  f:[{k:'data',l:'Data de produção',t:'date',req:1,def:today},{k:'produto',l:'Produto',t:'ref',ref:'produtos',req:1},{k:'receita',l:'Receita',t:'ref',ref:'receitas'},
+     {k:'modoCalc',l:'Como calcular os ingredientes',t:'sel',o:['Pela quantidade a produzir','Pelo ingrediente base','Manual'],def:()=>'Pela quantidade a produzir'},
+     {k:'quantidade',l:'Quantidade a produzir',t:'number'},{k:'qtdBase',l:'Quantidade do ingrediente base',t:'number'},
+     {k:'ingr',l:'Ingredientes desta produção (calculados pela receita — pode alterar)',t:'lines',cols:[{k:'materia',l:'Matéria-prima',t:'ref',ref:'materias',big:1},{k:'liq',l:'Qtd. utilizada',t:'number'},{k:'bruto',l:'Qtd. a abater (bruto)',t:'number'}],
+       hint:r=>{ if(!r.materia) return ''; const u=unidOf(r.materia); const d=dispOf(r.materia); return 'Unidade: '+(u||'—')+' · em stock: '+d+' '+u+(num(r.bruto)!=null&&+r.bruto>d?' — INSUFICIENTE':''); }},
+     {k:'qtdReal',l:'Quantidade real obtida (opcional)',t:'number'},{k:'lote',l:'Lote',req:1},{k:'validade',l:'Validade',t:'date'},{k:'abater',l:'Abater stock',t:'sel',o:['Sim','Não'],def:()=>'Sim'},
      {k:'estadoLote',l:'Estado do lote',t:'sel',o:['Libertado','Em quarentena','Bloqueado','Retirado do mercado'],def:()=>'Libertado'},{k:'libertadoPor',l:'Libertado por (verificação dos PCC)'},
      {k:'responsavel',l:'Responsável',def:getUser},{k:'lotesMP',l:'Lotes de matérias-primas utilizados (preenchido automaticamente)',t:'textarea'},{k:'destino',l:'Clientes / destino',t:'textarea'}],
-  list:['data','produto','lote','quantidade','validade','estadoLote','consumo'],
+  list:['data','produto','lote','quantidade','rend','validade','estadoLote','consumo'],
   validate:r=>{ if(D('lotes').some(x=>x.id!==r.id&&String(x.lote).trim().toLowerCase()===String(r.lote).trim().toLowerCase())) return 'Já existe um lote com o número «'+r.lote+'». Os lotes têm de ser únicos para a rastreabilidade.';
-     if(r.validade&&r.data&&r.validade<r.data) return 'A validade não pode ser anterior à data de produção.'; return null; },
-  virt:{consumo:{l:'Stock',fn:r=>(r.falta&&r.falta.length)?'<span class="bd warn">Faltou stock</span>':(r.consumos&&r.consumos.length?'<span class="bd ok">Abatido</span>':'')}},
+     if(r.validade&&r.data&&r.validade<r.data) return 'A validade não pode ser anterior à data de produção.';
+     if(r.receita&&r.modoCalc==='Pelo ingrediente base'&&num(r.qtdBase)==null) return 'Indique a quantidade do ingrediente base.';
+     if(r.receita&&(r.modoCalc||'Pela quantidade a produzir')==='Pela quantidade a produzir'&&num(r.quantidade)==null) return 'Indique a quantidade a produzir.';
+     for(const l of (r.ingr||[])){ if(l.materia&&((num(l.liq)!=null&&+l.liq<0)||(num(l.bruto)!=null&&+l.bruto<0))) return 'Quantidades de ingredientes não podem ser negativas.'; if(!l.materia&&(l.liq||l.bruto)) return 'Há uma linha de ingrediente sem matéria-prima.'; }
+     return null; },
+  virt:{consumo:{l:'Stock',fn:r=>(r.falta&&r.falta.length)?'<span class="bd warn">Faltou stock</span>':(r.consumos&&r.consumos.length?'<span class="bd ok">Abatido</span>':'')},
+        quantidade:{l:'Quantidade',fn:r=>num(r.quantidade)!=null?esc(r.quantidade+' '+(unidRec(r.receita)||'')):''},
+        rend:{l:'Real / previsto',fn:r=>num(r.qtdReal)!=null&&num(r.quantidade)?Math.round(100*r.qtdReal/r.quantidade)+'%':''}},
   extra:r=>(r.consumos&&r.consumos.length)?'<div class="card sm"><b>Consumos registados</b><br>'+r.consumos.map(c=>esc(lbl('materias',c.materia))+': lote '+esc(c.lote)+' — '+c.qtd+' '+esc(unidOf(c.materia))).join('<br>')+(r.falta&&r.falta.length?'<br><span style="color:var(--bad)">Sem stock suficiente: '+esc(r.falta.join('; '))+'</span>':'')+'</div>':'',
+  init:root=>{ lotesToggle(root); },
   onChange:(root,el)=>{
     const g=k=>root.querySelector('[name="'+k+'"]');
+    const row=el.closest&&el.closest('[data-lines="ingr"] .lrow');
+    if(row){ const c=el.dataset.c; const gl=k=>row.querySelector('[data-c="'+k+'"]');
+      if(g('modoCalc').value!=='Manual'){ g('modoCalc').value='Manual'; lotesToggle(root); toast('Alterou um ingrediente — passou para cálculo manual'); }
+      if(c==='liq'||c==='materia'){ const ap=aprovOf(g('receita').value,gl('materia').value); if(num(gl('liq').value)!=null) gl('bruto').value=rnd(+gl('liq').value*100/ap); }
+      return; }
     if(el.name==='produto'){ const p=D('produtos').find(x=>x.id===el.value); const rcs=D('receitas').filter(x=>x.produto===el.value);
       if(rcs.length===1 && !g('receita').value){ g('receita').value=rcs[0].id; if(!g('quantidade').value) g('quantidade').value=rcs[0].rendimento; }
-      if(p && !g('lote').value) g('lote').value=(p.codigo||p.nome.replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase())+g('data').value.replace(/-/g,'').slice(2);
+      if(p && !g('lote').value) g('lote').value=newLoteCode(p.id,g('data').value);
       if(p && num(p.vidaUtil)!=null && !g('validade').value) g('validade').value=addDays(g('data').value||today(),p.vidaUtil); }
-    if(el.name==='receita'){ const rc=D('receitas').find(x=>x.id===el.value); if(rc && !g('quantidade').value) g('quantidade').value=rc.rendimento; }
+    if(el.name==='receita'){ const rc=D('receitas').find(x=>x.id===el.value); if(rc){ if(!g('quantidade').value) g('quantidade').value=rc.rendimento; if(!g('produto').value&&rc.produto){ g('produto').value=rc.produto; M.lotes.onChange(root,g('produto')); } } }
+    if(['receita','quantidade','qtdBase','modoCalc','produto'].includes(el.name)){ lotesToggle(root); lotesRecalc(root,el.name); }
   },
   compute:r=>{
-    const sig=[r.receita,r.quantidade,r.abater,r.data].join('|');
+    const sig=[JSON.stringify(r.ingr||[]),r.receita,r.quantidade,r.abater,r.data].join('|');
     if(r._sig===sig && r.consumos) return; r._sig=sig;
     r.consumos=[]; r.falta=[];
-    const rc=D('receitas').find(x=>x.id===r.receita);
-    if(rc && r.abater!=='Não' && num(r.quantidade)!=null && num(rc.rendimento)){
-      const fac=+r.quantidade/+rc.rendimento; const lots=stockLots(r.id);
-      (rc.ingredientes||[]).forEach(i=>{ if(!i.materia||num(i.qtd)==null) return; const a=allocate(i.materia,rnd(+i.qtd*fac),lots,r.data); r.consumos.push(...a.out); if(a.falta) r.falta.push(lbl('materias',i.materia)+' (faltam '+a.falta+' '+unidOf(i.materia)+')'); });
-      if(!r.lotesMP || r.lotesMP===r._autoMP){ r.lotesMP=r.consumos.map(c=>lbl('materias',c.materia)+': '+c.lote+' ('+c.qtd+' '+unidOf(c.materia)+')').join('\n'); r._autoMP=r.lotesMP; }
-    }
+    if(r.abater==='Não') return;
+    let need=(r.ingr||[]).filter(l=>l.materia&&(num(l.bruto)!=null||num(l.liq)!=null)).map(l=>({materia:l.materia,q:+(num(l.bruto)!=null?l.bruto:l.liq)}));
+    if(!need.length&&r.receita&&num(r.quantidade)!=null){ const c=recipeCalc(D('receitas').find(x=>x.id===r.receita),'qtd',r.quantidade); if(c.lines) need=c.lines.map(l=>({materia:l.materia,q:l.bruto})); }
+    const lots=stockLots(r.id);
+    need.forEach(n=>{ if(!(n.q>0)) return; const a=allocate(n.materia,rnd(n.q),lots,r.data); r.consumos.push(...a.out); if(a.falta) r.falta.push(lbl('materias',n.materia)+' (faltam '+a.falta+' '+unidOf(n.materia)+')'); });
+    if(!r.lotesMP || r.lotesMP===r._autoMP){ r.lotesMP=r.consumos.map(c=>lbl('materias',c.materia)+': '+c.lote+' ('+c.qtd+' '+unidOf(c.materia)+')').join('\n'); r._autoMP=r.lotesMP; }
   },
   msg:r=>r.falta&&r.falta.length?'Atenção — stock insuficiente: '+r.falta.join('; '):(r.consumos&&r.consumos.length?'Stock abatido em '+r.consumos.length+' lote(s)':'')},
  ajustes:{t:'Movimentos de stock',d:'Quebras, devoluções, produtos fora de validade e acertos de inventário.',label:r=>fDate(r.data),sort:'data',
@@ -546,7 +641,13 @@ const M={
      {k:'periodicidade',l:'Periodicidade manutenção/calibração (dias)',t:'number'},{k:'ultima',l:'Última manutenção/calibração',t:'date'},
      {k:'ativo',l:'Em uso',t:'sel',o:['Sim','Não'],def:()=>'Sim'},{k:'obs',l:'Observações',t:'textarea'},{k:'docs',l:'Manuais / certificados de calibração',t:'files'}],
   list:['nome','tipo','local','limites','proxima','ativo'],
-  virt:{limites:{l:'Limites',fn:r=>((r.tmin!==''&&r.tmin!=null)||(r.tmax!==''&&r.tmax!=null))?((r.tmin!==''&&r.tmin!=null?r.tmin:'—')+' a '+(r.tmax!==''&&r.tmax!=null?r.tmax:'—')+' °C'):''},
+  onChange:(root,el)=>{ const g=k=>root.querySelector('[name="'+k+'"]');
+    if(el.name==='nome'&&!g('tipo').value&&FRIO_RX.test(el.value)) g('tipo').value=/congel|negativ|abatedor/i.test(el.value)?'Frio negativo':'Frio positivo';
+    if(el.name==='tipo'||el.name==='nome'){ const d=LIM_DEF[g('tipo').value]; if(d&&g('tmin').value===''&&g('tmax').value===''){ g('tmin').value=d.tmin; g('tmax').value=d.tmax; } } },
+  compute:r=>{ const d=LIM_DEF[r.tipo]; if(d&&!hasLim(r)){ r.tmin=d.tmin; r.tmax=d.tmax; r._limDef=1; } },
+  msg:r=>isFrio(r)?'Guardado — já aparece no registo de temperaturas'+(r._limDef?(delete r._limDef,' (limites '+M.equipamentos.virt.limites.fn(r)+' por defeito; ajuste se necessário)'):''):null,
+  validate:r=>{ if(num(r.tmin)!=null&&num(r.tmax)!=null&&+r.tmin>+r.tmax) return 'A temperatura mínima não pode ser superior à máxima.'; return null; },
+  virt:{limites:{l:'Limites',fn:r=>{ const lo=r.tmin!==''&&r.tmin!=null, hi=r.tmax!==''&&r.tmax!=null; return lo&&hi?r.tmin+' a '+r.tmax+' °C':hi?'≤ '+r.tmax+' °C':lo?'≥ '+r.tmin+' °C':''; }},
         proxima:{l:'Próxima intervenção',fn:r=>proxEquip(r)&&r.ativo!=='Não'?dueBadge(proxEquip(r)):''}}},
  manutencao:{t:'Manutenção e calibração',d:'Intervenções preventivas, corretivas, calibrações e verificações.',label:r=>fDate(r.data)+' '+lbl('equipamentos',r.equipamento),sort:'data',
   f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'equipamento',l:'Equipamento',t:'ref',ref:'equipamentos',req:1},
@@ -587,6 +688,33 @@ const M={
      {k:'lmin',l:'Valor mínimo',t:'number'},{k:'lmax',l:'Valor máximo',t:'number'},{k:'frequencia',l:'Frequência',t:'sel',o:['Cada lote','Diária','Semanal','Mensal']},{k:'metodo',l:'Método / instruções',t:'textarea'}],
   list:['nome','limites','frequencia'],
   virt:{limites:{l:'Limites',fn:r=>r.tipo==='Conforme / Não conforme'?'Conforme / Não conforme':[num(r.lmin)!=null?'≥ '+r.lmin:'',num(r.lmax)!=null?'≤ '+r.lmax:''].filter(Boolean).join(' e ')+' '+esc(r.unidade||'')}}},
+ modelos:{t:'Modelos de registo',d:'Fichas de registo à medida da empresa. Carregue modelos do seu sector ou importe os impressos que já usa (Excel, Word, PDF ou foto). Cada modelo tem linhas fixas (ex.: Fritadeira 1, Fritadeira 2) e campos com limites para validação automática.',label:r=>r.nome,
+  f:[{k:'nome',l:'Nome do registo',req:1},{k:'sector',l:'Sector',t:'sel',o:()=>['Comum',...Object.values(SECT).map(x=>x.n),'Específico da empresa']},{k:'frequencia',l:'Frequência',t:'sel',o:['Cada lote','Diária','Semanal','Mensal','Quando aplicável'],def:()=>'Diária'},
+     {k:'codigo',l:'Código / versão do impresso'},{k:'itens',l:'Linhas fixas da folha (uma por linha — opcional)',t:'textarea'},
+     {k:'campos',l:'Campos a registar',t:'lines',req:1,cols:[{k:'nome',l:'Campo',big:1},{k:'tipo',l:'Tipo',t:'sel',o:TIPOS_CAMPO,def:'Número'},{k:'unidade',l:'Unidade'},{k:'min',l:'Mín.',t:'number'},{k:'max',l:'Máx.',t:'number'},{k:'opcoes',l:'Opções (separe com ;)'}],
+       hint:r=>r.tipo==='Lista de opções'?'Escreva as opções separadas por ;':r.tipo==='Conforme / Não conforme'?'«Não conforme» gera não conformidade automaticamente':(r.tipo==='Número'||!r.tipo)&&(r.min||r.max)?'Fora de '+(r.min||'—')+' a '+(r.max||'—')+' '+(r.unidade||'')+' gera não conformidade':''},
+     {k:'instrucoes',l:'Instruções de preenchimento',t:'textarea'},{k:'ativo',l:'Em uso',t:'sel',o:['Sim','Não'],def:()=>'Sim'},{k:'docs',l:'Impresso original',t:'files'}],
+  list:['nome','sector','frequencia','ncampos','nregs','ativo'],
+  validate:r=>{ const c=(r.campos||[]).filter(x=>x.nome); if(!c.length) return 'Adicione pelo menos um campo.'; for(const x of c){ if(num(x.min)!=null&&num(x.max)!=null&&+x.min>+x.max) return 'No campo «'+x.nome+'» o mínimo é superior ao máximo.'; if(x.tipo==='Lista de opções'&&!String(x.opcoes||'').includes(';')&&!String(x.opcoes||'').trim()) return 'Indique as opções do campo «'+x.nome+'».'; } return null; },
+  virt:{ncampos:{l:'Campos',fn:r=>(r.campos||[]).length+((r.itens||'').trim()?' × '+(r.itens||'').split('\n').filter(x=>x.trim()).length+' linhas':'')},nregs:{l:'Registos',fn:r=>D('registos').filter(x=>x.modelo===r.id).length}}},
+ registos:{t:'Outros registos (modelos)',d:'Preenchimento dos modelos de registo da empresa. Valores fora dos limites ou «Não conforme» criam não conformidade automaticamente.',label:r=>fDate(r.dt)+' '+lbl('modelos',r.modelo),sort:'dt',
+  f:[{k:'dt',l:'Data e hora',t:'dt',req:1,def:nowLocal},{k:'modelo',l:'Modelo de registo',t:'ref',ref:'modelos',filter:x=>x.ativo!=='Não',req:1},
+     {k:'valores',l:'Registo',t:'dyn',render:(root,rec)=>renderDyn(root,rec.modelo,rec.valores,rec._campos,rec._itens),read:root=>readDyn(root),print:r=>dynTable(r)},
+     {k:'lote',l:'Lote / referência (opcional)'},{k:'responsavel',l:'Responsável',def:getUser},{k:'obs',l:'Observações / ação corretiva',t:'textarea'}],
+  list:['dt','modelo','resumo','conforme','responsavel'],
+  onChange:(root,el)=>{ if(el.name==='modelo') renderDyn(root,el.value,[],null,null); else if(el.dataset&&el.dataset.cid) dynMark(el); },
+  validate:r=>{ if(!(r.valores||[]).some(x=>Object.values(x.v||{}).some(v=>v!==''))) return 'Preencha pelo menos um valor do registo.';
+    const c={...r}; delete c._campos; delete c._itens; if(r._mod===r.modelo){ c._campos=r._campos; c._itens=r._itens; } M.registos.compute(c);
+    if(c.conforme==='Não conforme'&&!String(r.obs||'').trim()) return 'Há valores não conformes ('+c._prob+') — descreva a ação corretiva nas observações.'; return null; },
+  compute:r=>{ const mod=D('modelos').find(x=>x.id===r.modelo);
+    if((!r._campos||r._mod!==r.modelo)&&mod){ r._campos=(mod.campos||[]).filter(c=>c.nome).map(c=>({id:c.id,nome:c.nome,tipo:c.tipo||'Número',unidade:c.unidade||'',min:c.min??'',max:c.max??'',opcoes:c.opcoes||''})); r._itens=mod.itens||''; r._mod=r.modelo; }
+    const campos=r._campos||[]; const p=[]; let any=false;
+    (r.valores||[]).forEach(row=>campos.forEach(c=>{ const v=(row.v||{})[c.id]; if(v==null||v==='') return; any=true; const nm=(row.item?row.item+' — ':'')+c.nome;
+      if((c.tipo||'Número')==='Número'&&num(v)!=null){ if((num(c.min)!=null&&+v<+c.min)||(num(c.max)!=null&&+v>+c.max)) p.push(nm+': '+v+(c.unidade?' '+c.unidade:'')); }
+      else if(c.tipo==='Conforme / Não conforme'&&v==='Não conforme') p.push(nm+': não conforme'); }));
+    r.conforme=p.length?'Não conforme':any?'Conforme':''; r._prob=p.join('; '); },
+  nc:r=>r.conforme==='Não conforme'?lbl('modelos',r.modelo)+(r.lote?' ('+r.lote+')':'')+': '+r._prob:null,
+  virt:{resumo:{l:'Valores',fn:r=>{ const c=r._campos||[]; const out=[]; (r.valores||[]).forEach(row=>c.forEach(cc=>{ const v=(row.v||{})[cc.id]; if(v!=null&&v!=='') out.push((row.item?row.item+' · ':'')+cc.nome+': '+v+(cc.unidade&&cc.tipo==='Número'?' '+cc.unidade:'')); })); return esc(out.slice(0,3).join(' | ')+(out.length>3?' (+'+(out.length-3)+')':'')); }}}},
  documentos:{t:'Documentos e legislação',d:'Procedimentos, fichas técnicas e de segurança, certificados, legislação.',label:r=>r.titulo,
   f:[{k:'titulo',l:'Título',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Procedimento','Instrução de trabalho','Impresso / registo','Ficha técnica','Ficha de segurança','Legislação','Certificado','Outro']},
      {k:'codigo',l:'Código / versão'},{k:'data',l:'Data',t:'date'},{k:'revisao',l:'Próxima revisão',t:'date'},{k:'link',l:'Link / localização',w:1},{k:'obs',l:'Notas',t:'textarea'},{k:'docs',l:'Ficheiros',t:'files'}],
@@ -631,7 +759,7 @@ const M={
   onChange:(root,el)=>{ if(el.name!=='plano') return; const p=D('planoAnalises').find(x=>x.id===el.value); if(!p) return; ['tipo','amostra','parametros','laboratorio'].forEach(k=>{ const i=root.querySelector('[name="'+k+'"]'); if(i&&!i.value&&p[k]) i.value=p[k]; }); },
   nc:r=>r.conforme==='Não conforme'?'Análise não conforme: '+(r.tipo||'')+' — '+r.amostra:null},
  nc:{t:'Não conformidades',d:'Desvios, reclamações e ações corretivas. São criadas automaticamente a partir de registos não conformes.',label:r=>'NC '+fDate(r.data),sort:'data',
-  f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'origem',l:'Origem',t:'sel',o:['Registo de temperatura','Monitorização PCC','Controlo específico','Receção','Higienização','Manutenção','Análise','Controlo de pragas','Reclamação de cliente','Retirada / recolha','Auditoria','Vidro / plásticos','Visitante','Outra']},
+  f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'origem',l:'Origem',t:'sel',o:['Registo de temperatura','Monitorização PCC','Controlo específico','Receção','Higienização','Manutenção','Análise','Controlo de pragas','Reclamação de cliente','Retirada / recolha','Auditoria','Vidro / plásticos','Visitante','Registo (modelo)','Outra']},
      {k:'gravidade',l:'Gravidade',t:'sel',o:['Menor','Maior','Crítica']},{k:'estado',l:'Estado',t:'sel',o:['Aberta','Em curso','Fechada'],def:()=>'Aberta'},
      {k:'descricao',l:'Descrição',t:'textarea',req:1},{k:'produto',l:'Produto / lote afetado'},{k:'responsavel',l:'Responsável'},
      {k:'correcao',l:'Correção imediata',t:'textarea'},{k:'causa',l:'Causa (análise)',t:'textarea'},{k:'acao',l:'Ação corretiva',t:'textarea'},
@@ -737,7 +865,7 @@ const M={
   nc:r=>{ const n=(r.checklist||[]).filter(x=>x.res==='Não conforme'); return n.length?(r.tipo||'Auditoria')+' de '+fDate(r.data)+' — '+n.length+' requisito(s) não conforme(s): '+n.map(x=>x.req+(x.ev?' ('+x.ev+')':'')).join('; '):null; }}
 };
 const EPI_DECL='Declaro que recebi os equipamentos de proteção individual acima indicados, em bom estado, e que fui informado(a) sobre a sua correta utilização, conservação e obrigatoriedade de uso, comprometendo-me a utilizá-los e a comunicar qualquer dano ou extravio (DL n.º 348/93).';
-const VERIF_MODS={temperaturas:'Temperaturas',higRegisto:'Registos de higienização',controlos:'Controlos específicos',pccRegisto:'Monitorização dos PCC',rececao:'Receção de mercadorias',lotes:'Produção e lotes',manutencao:'Manutenção e calibração',epiEntregas:'Entrega de EPI'};
+const VERIF_MODS={temperaturas:'Temperaturas',higRegisto:'Registos de higienização',controlos:'Controlos específicos',registos:'Outros registos (modelos)',pccRegisto:'Monitorização dos PCC',rececao:'Receção de mercadorias',lotes:'Produção e lotes',manutencao:'Manutenção e calibração',epiEntregas:'Entrega de EPI'};
 function recDate(r){ return String(r.dt||r.data||'').slice(0,10); }
 function verifStats(mod,de,ate){ const rs=D(mod).filter(r=>{ const d=recDate(r); return d&&(!de||d>=de)&&(!ate||d<=ate); }); return {n:rs.length,nc:rs.filter(r=>r.conforme==='Não conforme'||r.resultado==='Não conforme').length}; }
 function lastVerif(mod){ return D('verificacoes').filter(v=>v.registo===mod).sort((a,b)=>String(b.ate).localeCompare(String(a.ate)))[0]; }
@@ -759,7 +887,7 @@ function traceSummary(lote){ const q=String(lote).trim().toLowerCase(); if(!q) r
   if(used.length) out.push('Usado nos lotes: '+used.map(p=>esc(p.lote)+' → '+esc(p.destino||'sem destino')).join('; '));
   return out.length?out.join('<br>'):'<span class="mut">Lote não encontrado nos registos.</span>'; }
 CHECKLISTS['Codex · Reg. 852/2004 · BRCGS · IFS']=CHECKLIST;
-const ORIG={reclamacoes:'Reclamação de cliente',retiradas:'Retirada / recolha',auditorias:'Auditoria',vidros:'Vidro / plásticos',temperaturas:'Registo de temperatura',pccRegisto:'Monitorização PCC',controlos:'Controlo específico',rececao:'Receção',higRegisto:'Higienização',manutencao:'Manutenção',analises:'Análise',pragas:'Controlo de pragas'};
+const ORIG={registos:'Registo (modelo)',reclamacoes:'Reclamação de cliente',retiradas:'Retirada / recolha',auditorias:'Auditoria',vidros:'Vidro / plásticos',temperaturas:'Registo de temperatura',pccRegisto:'Monitorização PCC',controlos:'Controlo específico',rececao:'Receção',higRegisto:'Higienização',manutencao:'Manutenção',analises:'Análise',pragas:'Controlo de pragas'};
 function lastAnalise(pid){ return D('analises').filter(a=>a.plano===pid).sort((a,b)=>b.data.localeCompare(a.data))[0]; }
 function proxAnalise(p){ if(!num(p.frequencia)) return null; const a=lastAnalise(p.id); return a?addDays(a.data,p.frequencia):today(); }
 
@@ -768,22 +896,22 @@ const NAV=[
  ['Início',[['painel','Painel'],['assistente','Assistente HACCP'],['empresa','Empresa e sectores']]],
  ['Empresa',['equipa','produtos','materias','etapas']],
  ['Produção e stock',['rececao','receitas','lotes',['stock','Stock'],'ajustes']],
- ['Registos diários',['temperaturas','higRegisto','controlos','pccRegisto']],
+ ['Registos diários',['temperaturas','higRegisto','controlos','pccRegisto','registos']],
  ['Pré-requisitos',['fornecedores','equipamentos','manutencao','higPlano','pragas','planoAnalises','paramControlo','vidros','residuos']],
  ['Pessoas',['colaboradores','formacao','epiEntregas','epis','visitantes']],
- ['Documentos',['documentos',['importar','Importar documentos e dados']]],
+ ['Documentos',['documentos','modelos',['importar','Importar documentos e dados']]],
  ['Controlo',[['inspecao','Preparar inspeção (ASAE/DGAV)'],'analises','nc','reclamacoes','retiradas','auditorias','verificacoes',['rastreio','Rastreabilidade']]],
  ['HACCP',[['analise','Análise de perigos e PCC'],['alergenios','Matriz de alergénios'],'vulnerabilidade','objetivos',['plano','Plano HACCP (imprimir)']]],
  ['Administração',[['utilizadores','Utilizadores e permissões'],['dados','Cópia de segurança']]]
 ];
 function renderNav(){
   const cur=(location.hash.slice(2)||'painel').split('/')[0]; let h='';
-  NAV.forEach(([g,items])=>{ const vis=items.filter(it=>lvl(Array.isArray(it)?it[0]:it)>=1); if(!vis.length) return; h+='<h6>'+esc(g)+'</h6>';
+  NAV.forEach(([g,items])=>{ const vis=items.filter(it=>lvl(Array.isArray(it)?it[0]:it)>=1); if(!vis.length) return; h+='<div class="grp"><h6>'+esc(g)+'</h6>';
     items=items.filter(it=>lvl(Array.isArray(it)?it[0]:it)>=1); if(!items.length) return;
     items.forEach(it=>{ const [k,l]=Array.isArray(it)?it:[it,M[it].t]; let cnt='';
       if(k==='nc'){ const a=D('nc').filter(x=>x.estado!=='Fechada').length; cnt=a?'<span class="bd bad">'+a+'</span>':''; }
       else if(M[k]&&D(k).length) cnt='<span class="cnt">'+D(k).length+'</span>';
-      h+='<a href="#/'+k+'" class="'+(k===cur?'on':'')+'">'+esc(l)+cnt+'</a>'; }); });
+      h+='<a href="#/'+k+'" class="'+(k===cur?'on':'')+'">'+esc(l)+cnt+'</a>'; }); h+='</div>'; });
   document.getElementById('nav').innerHTML=h;
   const E=S.empresa; document.getElementById('tName').textContent=E.nome||'Gestão HACCP';
   renderUserChip();
@@ -791,6 +919,11 @@ function renderNav(){
 }
 document.getElementById('burger').onclick=()=>document.getElementById('nav').classList.toggle('open');
 document.getElementById('nav').addEventListener('click',e=>{ if(e.target.closest('a')) document.getElementById('nav').classList.remove('open'); });
+const HIST=[]; let goingBack=false;
+function navInfo(k){ for(const [g,items] of NAV) for(const it of items){ const [kk,l]=Array.isArray(it)?it:[it,M[it]?M[it].t:it]; if(kk===k) return {g,l}; } return {g:'',l:M[k]?M[k].t:k}; }
+function goBack(){ closeModal(2); closeModal(1); if(HIST.length>1){ HIST.pop(); goingBack=true; location.hash='#/'+HIST[HIST.length-1]; } else location.hash='#/painel'; }
+function goHome(){ closeModal(2); closeModal(1); document.getElementById('nav').classList.remove('open'); location.hash='#/painel'; }
+document.getElementById('tBack').onclick=goBack; document.getElementById('tHome').onclick=goHome;
 function render(){
   if(!CUR){ if(S.users.length) showLogin(); else showSetup(); return; }
   document.body.classList.remove('locked');
@@ -799,7 +932,12 @@ function render(){
   const views={painel:viewPainel,empresa:viewEmpresa,assistente:viewAssistente,analise:viewAnalise,plano:viewPlano,dados:viewDados,rastreio:viewRastreio,stock:viewStock,importar:viewImportar,utilizadores:viewUtilizadores,alergenios:viewAlergenios,inspecao:viewInspecao};
   if(!views[k]&&!M[k]){ location.hash='#/painel'; return; }
   if(lvl(k)<1){ v.innerHTML='<div class="card empty"><b>Sem acesso a este menu.</b><br>Peça ao administrador para lhe atribuir permissão.<br><br><a class="btn" href="#/painel">Voltar ao painel</a></div>'; return; }
-  if(views[k]) v.innerHTML=views[k](); else v.innerHTML=viewList(k);
+  if(!goingBack&&HIST[HIST.length-1]!==k) HIST.push(k); goingBack=false; if(HIST.length>50) HIST.splice(0,HIST.length-50);
+  document.getElementById('tBack').disabled=k==='painel'&&HIST.length<2;
+  const ni=navInfo(k);
+  const crumb=k==='painel'?'':'<div class="crumb noprint"><button class="btn" data-crumb="back">&#8592; Voltar</button><button class="btn" data-crumb="home">&#8962; Início</button><span>'+esc(ni.g)+(ni.g?' › ':'')+'<b>'+esc(ni.l)+'</b></span></div>';
+  if(views[k]) v.innerHTML=crumb+views[k](); else v.innerHTML=crumb+viewList(k);
+  v.querySelectorAll('[data-crumb]').forEach(b=>b.onclick=b.dataset.crumb==='back'?goBack:goHome);
   bindView(k); window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',render);
@@ -851,6 +989,11 @@ function viewList(key){
     (lvl('verificacoes')>=2&&rows.length?'<button class="btn s p" data-act="verif">Verificar e assinar</button>':'')+'</div>'; }
   h+='<div class="row noprint" style="margin-bottom:12px">'+(L>=2?'<button class="btn p" data-act="new">+ Novo</button>':'');
   if(key==='rececao'&&L>=2) h+='<button class="btn" data-act="newscan">Nova receção por leitura</button>';
+  if(key==='lotes'&&L>=2) h+='<button class="btn p" data-act="proddia">Produção do dia (várias receitas)</button>';
+  if(key==='modelos'&&L>=2) h+='<button class="btn p" data-act="modlib">Modelos do sector</button><button class="btn" data-act="modimp">Importar modelo da empresa</button>';
+  if(key==='registos'&&L>=2&&!D('modelos').length) h+='<a class="btn" href="#/modelos">Criar modelos de registo</a>';
+  if(key==='temperaturas'&&L>=2){ h=h.replace('data-act="new">+ Novo','data-act="new">+ Um equipamento'); h+='<button class="btn p" data-act="tempall">Registar todos os equipamentos</button>'; }
+  if(key==='temperaturas'){ const fr=D('equipamentos').filter(isFrio); h+='</div><div class="card sm" style="padding:10px 14px">'+(fr.length?'Equipamentos a registar ('+fr.length+'): '+fr.map(e=>esc(e.nome)+' <span class="mut">'+M.equipamentos.virt.limites.fn(e)+'</span>').join(' · '):'Ainda não há equipamentos de frio. <a href="#/equipamentos">Adicione-os em Equipamentos</a> com o tipo «Frio positivo» ou «Frio negativo».')+'</div><div class="row noprint" style="margin-bottom:12px">'; }
   if(key==='etapas'&&L>=3) h+='<button class="btn" data-act="modelo">Carregar modelo de sector</button>';
   if(key==='documentos'&&lvl('importar')>=2) h+='<a class="btn" href="#/importar">Importar documentos existentes</a>';
   h+='<input type="search" id="q" placeholder="Pesquisar…" style="max-width:240px"><span class="sp"></span>';
@@ -894,9 +1037,10 @@ function fieldHTML(f,val){
     inp='<div class="chk">'+o.map(x=>'<label><input type="checkbox" name="'+f.k+'" value="'+esc(x.v)+'"'+(arr.includes(x.v)?' checked':'')+'>'+esc(x.l)+'</label>').join('')+(o.length?'':'<small class="mut">Sem opções disponíveis.</small>')+'</div>'; }
   else if(t==='lines'){ const arr=Array.isArray(val)?val:[]; inp='<div class="lines" data-lines="'+f.k+'">'+arr.map(r=>lineRow(f,r)).join('')+'</div><button type="button" class="btn s" data-addline="'+f.k+'">+ Adicionar linha</button>'; }
   else if(t==='sig'){ inp='<div class="sigs" data-sig="'+f.k+'"></div><button type="button" class="btn s" data-signf="'+f.k+'">Assinar</button>'; }
+  else if(t==='dyn'){ inp='<div data-dyn="'+f.k+'"></div>'; }
   else if(t==='files'){ inp='<div class="files" data-files="'+f.k+'"></div><input type="file" multiple data-fin="'+f.k+'" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">'; }
   else { inp=ctrl(f,val,'name="'+f.k+'"'); if(t==='ref'&&!optsFor(f).length) inp+='<small class="mut">Sem registos em «'+esc(M[f.ref].t)+'». <a href="#/'+f.ref+'" data-close>Adicionar</a></small>'; }
-  const wide=f.w||['textarea','multi','refm','lines','files','sig'].includes(t);
+  const wide=f.w||['textarea','multi','refm','lines','files','sig','dyn'].includes(t);
   return '<label class="f'+(wide?' wide':'')+'"><span>'+esc(f.l)+req+'</span>'+inp+'</label>';
 }
 function readForm(root,fields){
@@ -907,6 +1051,7 @@ function readForm(root,fields){
       .filter(x=>f.cols.some(c=>!c.def&&x[c.k]));
     else if(f.t==='files') o[f.k]=root._files&&root._files[f.k]?root._files[f.k].keep:[];
     else if(f.t==='sig') o[f.k]=root._sig&&root._sig[f.k]||null;
+    else if(f.t==='dyn') o[f.k]=f.read(root);
     else { const el=root.querySelector('[name="'+f.k+'"]'); if(el) o[f.k]=el.value.trim(); }
   });
   return o;
@@ -941,7 +1086,7 @@ function openForm(key,id,preset){
   const btns=[];
   if(ex&&L>=3) btns.push({l:'Eliminar',c:'d',fn:()=>deleteRecord(key,id)});
   if(ex) btns.push({l:'Imprimir',fn:()=>printRecord(key,ex)});
-  if(ex&&L>=2) btns.push({l:'Duplicar',fn:()=>{ closeModal(1); const c=JSON.parse(JSON.stringify(ex)); ['id','_nc','consumos','falta','_sig','_autoMP','docs','assinaturas','_u','_e','_m','_c','_imp'].forEach(k=>delete c[k]); m.f.forEach(f=>{ if(f.t==='sig') delete c[f.k]; }); (c.linhas||[]).forEach(l=>l.id=uid()); (c.ingredientes||[]).forEach(l=>l.id=uid()); (c.itens||[]).forEach(l=>l.id=uid()); m.f.forEach(f=>{ if(f.def&&(f.t==='date'||f.t==='dt')) c[f.k]=f.def(); }); openForm(key,null,c); }});
+  if(ex&&L>=2) btns.push({l:'Duplicar',fn:()=>{ closeModal(1); const c=JSON.parse(JSON.stringify(ex)); ['id','_nc','consumos','falta','_sig','_autoMP','docs','assinaturas','_u','_e','_m','_c','_imp','_hist','lote'].forEach(k=>delete c[k]); if(key==='lotes'&&c.produto) c.lote=newLoteCode(c.produto,today()); (c.ingr||[]).forEach(l=>l.id=uid()); (c.campos||[]).forEach(l=>l.id=uid()); m.f.forEach(f=>{ if(f.t==='sig') delete c[f.k]; }); (c.linhas||[]).forEach(l=>l.id=uid()); (c.ingredientes||[]).forEach(l=>l.id=uid()); (c.itens||[]).forEach(l=>l.id=uid()); m.f.forEach(f=>{ if(f.def&&(f.t==='date'||f.t==='dt')) c[f.k]=f.def(); }); openForm(key,null,c); }});
   btns.push({l:canSave?'Cancelar':'Fechar',fn:()=>closeModal(1)});
   if(canSave) btns.push({l:'Guardar',c:'p',fn:async root=>{
     const v=readForm(root,m.f);
@@ -971,6 +1116,8 @@ function openForm(key,id,preset){
   root._files={}; m.f.filter(f=>f.t==='files').forEach(f=>{ root._files[f.k]={keep:[...(rec[f.k]||[])],add:[],del:[]}; renderFiles(root,f.k); });
   root._sig={}; m.f.filter(f=>f.t==='sig').forEach(f=>{ root._sig[f.k]=rec[f.k]||null; renderSigField(root,f.k,canSave); });
   root._sigs=[...(rec.assinaturas||[])]; renderSigList(root,canSave);
+  m.f.filter(f=>f.t==='dyn').forEach(f=>f.render(root,rec));
+  if(m.init) m.init(root,rec);
   root.addEventListener('change',e=>{
     const fin=e.target.closest('[data-fin]'); if(fin){ root._files[fin.dataset.fin].add.push(...fin.files); fin.value=''; renderFiles(root,fin.dataset.fin); return; }
     const row=e.target.closest('.lrow'); if(row){ const fk=row.parentElement.dataset.lines; const f=m.f.find(x=>x.k===fk); if(f&&f.hint){ const x={}; f.cols.forEach(c=>{ const el=row.querySelector('[data-c="'+c.k+'"]'); x[c.k]=el?el.value:''; }); row.querySelector('.hint').textContent=f.hint(x); } }
@@ -1000,6 +1147,187 @@ function openForm(key,id,preset){
   return root;
 }
 
+function tempAll(){
+  if(lvl('temperaturas')<2){ toast('Sem permissão para registar temperaturas'); return; }
+  const fr=D('equipamentos').filter(isFrio);
+  if(!fr.length){ toast('Não há equipamentos de frio. Adicione-os em Equipamentos (tipo «Frio positivo» ou «Frio negativo»).',6000); location.hash='#/equipamentos'; return; }
+  const hoje=today();
+  const body='<div class="grid"><label class="f"><span>Data e hora</span><input type="datetime-local" id="taDt" value="'+nowLocal()+'"></label><label class="f"><span>Responsável</span><input id="taR" value="'+esc(getUser()||'')+'"></label></div>'+
+   '<p class="sm mut">Escreva a temperatura de cada equipamento. Os que ficarem em branco não são registados.</p>'+
+   fr.map(e=>{ const t=D('temperaturas').filter(x=>x.equipamento===e.id).sort((a,b)=>b.dt.localeCompare(a.dt))[0];
+     return '<div class="card sm" style="margin:8px 0;padding:10px 12px" data-eq="'+e.id+'"><div class="row"><b class="sp">'+esc(e.nome)+'</b><span class="mut">'+(M.equipamentos.virt.limites.fn(e)||'sem limites')+'</span></div>'+
+     '<div class="row" style="margin-top:6px;align-items:center"><input type="number" step="any" inputmode="decimal" data-v placeholder="°C" style="max-width:110px"><span data-st class="sm"></span><span class="sp"></span><span class="mut sm">'+(t?'Último: '+esc(t.valor)+' °C · '+fDate(t.dt)+(String(t.dt).startsWith(hoje)?' (hoje)':''):'Sem registos')+'</span></div>'+
+     '<textarea data-a placeholder="Ação corretiva (obrigatória se fora dos limites)" style="display:none;margin-top:6px"></textarea></div>'; }).join('');
+  const lim=(e,v)=>{ if(num(e.tmin)==null&&num(e.tmax)==null) return ''; return (num(e.tmin)!=null&&v<+e.tmin)||(num(e.tmax)!=null&&v>+e.tmax)?'Não conforme':'Conforme'; };
+  const root=modal('Registo de temperaturas — todos os equipamentos',body,[{l:'Cancelar',fn:()=>closeModal(1)},{l:'Guardar todos',c:'p',fn:r=>{
+    const dt=r.querySelector('#taDt').value, resp=r.querySelector('#taR').value.trim(); if(!dt){ toast('Indique a data e hora'); return; }
+    const rows=[...r.querySelectorAll('[data-eq]')].map(b=>({e:D('equipamentos').find(x=>x.id===b.dataset.eq),v:b.querySelector('[data-v]').value.trim(),a:b.querySelector('[data-a]').value.trim(),b})).filter(x=>x.v!=='');
+    if(!rows.length){ toast('Escreva pelo menos uma temperatura'); return; }
+    for(const x of rows){ const err=genericValidate('temperaturas',{dt,equipamento:x.e.id,valor:x.v}); if(err){ toast(x.e.nome+': '+err,6000); return; }
+      if(lim(x.e,+x.v)==='Não conforme'&&!x.a){ x.b.querySelector('[data-a]').style.display=''; x.b.querySelector('[data-a]').focus(); toast(x.e.nome+': fora dos limites — descreva a ação corretiva',6000); return; } }
+    let nNC=0; rows.forEach(x=>{ const rec={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',dt,equipamento:x.e.id,valor:x.v,responsavel:resp,acao:x.a,assinaturas:[]};
+      M.temperaturas.compute(rec); D('temperaturas').push(rec);
+      const t=M.temperaturas.nc(rec); if(t){ const n={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',data:today(),origem:ORIG.temperaturas||'Outra',gravidade:'Maior',estado:'Aberta',descricao:t,correcao:rec.acao||'',responsavel:resp,_src:'temperaturas:'+rec.id}; D('nc').push(n); rec._nc=n.id; nNC++; } });
+    if(resp) setUser(resp); save(); closeModal(1); render(); toast(rows.length+' temperatura(s) registada(s)'+(nNC?' — '+nNC+' não conformidade(s) criada(s)':''),5000); }}],1);
+  root.addEventListener('input',e=>{ const b=e.target.closest('[data-eq]'); if(!b||!e.target.matches('[data-v]')) return; const eq=D('equipamentos').find(x=>x.id===b.dataset.eq); const v=e.target.value.trim(); const st=b.querySelector('[data-st]');
+    const c=v===''||isNaN(+v)?'':lim(eq,+v); st.innerHTML=c?badge(c):''; b.querySelector('[data-a]').style.display=c==='Não conforme'?'':'none'; });
+}
+const unidRec=id=>{ const rc=D('receitas').find(x=>x.id===id); return rc?rc.unidade||'':''; };
+function lotesToggle(root){ const g=k=>root.querySelector('[name="'+k+'"]'); const md=g('modoCalc').value; const rc=D('receitas').find(x=>x.id===g('receita').value);
+  const show=(k,on)=>{ const l=g(k)&&g(k).closest('label'); if(l) l.style.display=on?'':'none'; };
+  show('modoCalc',!!rc); show('qtdBase',!!rc&&md==='Pelo ingrediente base');
+  const lq=g('quantidade').closest('label').querySelector('span'); lq.textContent=(md==='Pelo ingrediente base'?'Quantidade prevista':'Quantidade a produzir')+(rc&&rc.unidade?' ('+rc.unidade+')':'');
+  const lb=g('qtdBase').closest('label').querySelector('span'); lb.textContent='Quantidade do ingrediente base'+(rc&&rc.base?' — '+lbl('materias',rc.base)+' ('+unidOf(rc.base)+')':''); }
+function lotesRecalc(root,origin){ const g=k=>root.querySelector('[name="'+k+'"]'); const md=g('modoCalc').value; const rc=D('receitas').find(x=>x.id===g('receita').value); if(!rc) return;
+  const f=M.lotes.f.find(x=>x.k==='ingr'); const box=root.querySelector('[data-lines="ingr"]');
+  const filled=[...box.querySelectorAll('.lrow')].some(rw=>rw.querySelector('[data-c="liq"]').value||rw.querySelector('[data-c="bruto"]').value);
+  if(md==='Manual'){ if(origin==='receita'||!filled) box.innerHTML=(rc.ingredientes||[]).filter(i=>i.materia).map(i=>lineRow(f,{materia:i.materia})).join('')||lineRow(f); return; }
+  const c=md==='Pelo ingrediente base'?recipeCalc(rc,'base',g('qtdBase').value):recipeCalc(rc,'qtd',g('quantidade').value);
+  if(c.erro){ if(origin!=='produto'&&origin!=='receita') toast(c.erro); return; }
+  if(md==='Pelo ingrediente base'&&c.prev!=null) g('quantidade').value=c.prev;
+  box.innerHTML=c.lines.map(l=>lineRow(f,{materia:l.materia,liq:l.liq,bruto:l.bruto})).join('')||lineRow(f);
+  if(c.avisos.length) toast(c.avisos.join('; '),6000); }
+function prodDia(){
+  if(lvl('lotes')<2){ toast('Sem permissão para registar produção'); return; }
+  const rcs=D('receitas').filter(r=>(r.ingredientes||[]).length).sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(!rcs.length){ toast('Crie primeiro as receitas'); location.hash='#/receitas'; return; }
+  const body='<div class="grid"><label class="f"><span>Data de produção</span><input type="date" id="pdD" value="'+today()+'"></label><label class="f"><span>Responsável</span><input id="pdR" value="'+esc(getUser()||'')+'"></label></div>'+
+    '<p class="sm mut">Indique quanto vai produzir de cada receita. As quantidades de ingredientes são calculadas pela receita (incluindo aproveitamento) e é criado um lote por receita.</p>'+
+    rcs.map(r=>'<div class="card sm" style="margin:6px 0;padding:10px 12px" data-rc="'+r.id+'"><div class="row" style="align-items:center"><b class="sp">'+esc(r.nome)+'</b><span class="mut">rende '+esc(r.rendimento+' '+(r.unidade||''))+'</span></div>'+
+      '<div class="row" style="margin-top:6px;align-items:center"><input type="number" step="any" inputmode="decimal" data-q placeholder="Quantidade" style="max-width:130px"><span class="sm">'+esc(r.unidade||'')+'</span>'+(r.produto?'':'<span class="bd warn">sem produto final</span>')+'</div></div>').join('')+
+    '<h3 style="margin-top:14px">Necessidades de matérias-primas</h3><div id="pdNeed" class="sm mut">Escreva as quantidades para ver o total a usar e o stock disponível.</div>';
+  const calc=root=>{ const tot={}; const err=[];
+    root.querySelectorAll('[data-rc]').forEach(b=>{ const v=b.querySelector('[data-q]').value.trim(); if(!v) return; const rc=D('receitas').find(x=>x.id===b.dataset.rc); const c=recipeCalc(rc,'qtd',v);
+      if(c.erro){ err.push(rc.nome+': '+c.erro); return; } c.lines.forEach(l=>{ const t=tot[l.materia]=tot[l.materia]||{liq:0,bruto:0}; t.liq=rnd(t.liq+l.liq); t.bruto=rnd(t.bruto+l.bruto); }); });
+    return {tot,err}; };
+  const root=modal('Produção do dia — várias receitas',body,[{l:'Cancelar',fn:()=>closeModal(1)},{l:'Criar lotes',c:'p',fn:r=>{
+    const data=r.querySelector('#pdD').value, resp=r.querySelector('#pdR').value.trim(); if(!data){ toast('Indique a data'); return; }
+    if(daysTo(data)>1){ toast('A data de produção não pode estar no futuro.'); return; }
+    const sel=[...r.querySelectorAll('[data-rc]')].map(b=>({rc:D('receitas').find(x=>x.id===b.dataset.rc),v:b.querySelector('[data-q]').value.trim()})).filter(x=>x.v);
+    if(!sel.length){ toast('Indique a quantidade de pelo menos uma receita'); return; }
+    const semP=sel.filter(x=>!x.rc.produto); if(semP.length){ toast('Associe um produto final à receita: '+semP.map(x=>x.rc.nome).join(', '),6000); return; }
+    for(const x of sel){ const c=recipeCalc(x.rc,'qtd',x.v); if(c.erro){ toast(x.rc.nome+': '+c.erro); return; } x.c=c; }
+    const falta=[]; const criados=[];
+    sel.forEach(x=>{ const p=D('produtos').find(y=>y.id===x.rc.produto);
+      const rec={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',data,produto:x.rc.produto,receita:x.rc.id,modoCalc:'Pela quantidade a produzir',quantidade:x.v,
+        ingr:x.c.lines.map(l=>({id:uid(),materia:l.materia,liq:String(l.liq),bruto:String(l.bruto)})),lote:newLoteCode(x.rc.produto,data),validade:p&&num(p.vidaUtil)!=null?addDays(data,p.vidaUtil):'',
+        abater:'Sim',estadoLote:'Libertado',responsavel:resp,assinaturas:[]};
+      M.lotes.compute(rec); D('lotes').push(rec); criados.push(rec.lote); falta.push(...rec.falta); });
+    if(resp) setUser(resp); save(); closeModal(1); render();
+    toast(criados.length+' lote(s) criado(s): '+criados.join(', ')+(falta.length?' — ATENÇÃO stock insuficiente: '+falta.join('; '):''),8000); }}],1);
+  root.addEventListener('input',()=>{ const {tot,err}=calc(root); const el=root.querySelector('#pdNeed'); const ks=Object.keys(tot);
+    if(!ks.length&&!err.length){ el.innerHTML='Escreva as quantidades para ver o total a usar e o stock disponível.'; return; }
+    el.innerHTML=(err.length?'<div class="alert warn"><i>!</i><span>'+esc(err.join('; '))+'</span></div>':'')+(ks.length?'<div class="tw"><table><thead><tr><th>Matéria-prima</th><th>Utilizada</th><th>A abater (bruto)</th><th>Em stock</th><th></th></tr></thead><tbody>'+
+      ks.sort((a,b)=>lbl('materias',a).localeCompare(lbl('materias',b))).map(m=>{ const d=dispOf(m); const u=unidOf(m); return '<tr><td>'+esc(lbl('materias',m))+'</td><td>'+tot[m].liq+' '+esc(u)+'</td><td>'+tot[m].bruto+' '+esc(u)+'</td><td>'+d+' '+esc(u)+'</td><td>'+(tot[m].bruto>d?'<span class="bd bad">Falta '+rnd(tot[m].bruto-d)+'</span>':'<span class="bd ok">OK</span>')+'</td></tr>'; }).join('')+'</tbody></table></div>':''); });
+}
+
+/* ---------- Biblioteca de modelos de registo por sector ---------- */
+const mN=(nome,o)=>({nome,tipo:'Número',...o}), mC=nome=>({nome,tipo:'Conforme / Não conforme'}), mT=nome=>({nome,tipo:'Texto'}), mS=nome=>({nome,tipo:'Sim / Não'}), mH=nome=>({nome,tipo:'Hora'}), mL=(nome,opcoes)=>({nome,tipo:'Lista de opções',opcoes});
+const MODELOS_LIB={
+ comum:[
+  {nome:'Higiene pessoal — verificação diária',frequencia:'Diária',itens:'Fardamento limpo e completo\nTouca / proteção do cabelo\nSem adornos (anéis, relógios, brincos)\nUnhas curtas, limpas e sem verniz\nSem sintomas de doença / feridas protegidas',campos:[mC('Avaliação')],instrucoes:'Indique nas observações quem foi verificado. Verificar no início do turno. Qualquer «Não conforme» obriga a corrigir antes de iniciar a manipulação.'},
+  {nome:'Abertura e fecho do estabelecimento',frequencia:'Diária',itens:'Instalações limpas e arrumadas\nEquipamentos de frio a funcionar\nLavatórios com sabão, papel e água quente\nResíduos retirados\nPortas e janelas fechadas / redes mosquiteiras',campos:[mC('Abertura'),mC('Fecho')]},
+  {nome:'Controlo de pragas — inspeção interna',frequencia:'Semanal',itens:'Isco 1\nIsco 2\nIsco 3\nIsco 4\nInsectocaçador',campos:[mC('Estado do dispositivo'),mS('Consumo / capturas'),mT('Observação')],instrucoes:'Sinais de pragas, consumo de isco ou dispositivos danificados → informar a empresa de controlo de pragas.'},
+  {nome:'Verificação do termómetro (água com gelo / ebulição)',frequencia:'Mensal',itens:'Termómetro 1',campos:[mN('Água com gelo',{unidade:'°C',min:-1,max:1}),mN('Água em ebulição',{unidade:'°C',min:99,max:101})]},
+  {nome:'Descongelação',frequencia:'Quando aplicável',campos:[mT('Produto'),mT('Lote'),mH('Início'),mN('Temperatura final',{unidade:'°C',max:5}),mL('Método','Câmara de refrigeração;Micro-ondas;Água fria corrente;Confeção direta')],instrucoes:'Descongelar sempre em refrigeração (0 a 5 °C). Nunca voltar a congelar.'},
+  {nome:'Concentração de desinfetante / água de lavagem',frequencia:'Diária',campos:[mT('Produto / zona'),mN('Concentração',{unidade:'ppm'}),mC('Avaliação')]}],
+ padaria:[
+  {nome:'Controlo de fermentação',frequencia:'Cada lote',campos:[mT('Produto'),mT('Lote'),mN('Temperatura da câmara',{unidade:'°C',min:20,max:35}),mN('Humidade',{unidade:'%',min:70,max:90}),mN('Tempo',{unidade:'min'})]},
+  {nome:'Controlo de cozedura',frequencia:'Cada lote',campos:[mT('Produto'),mT('Lote'),mN('Temperatura do forno',{unidade:'°C'}),mN('Tempo',{unidade:'min'}),mC('Cor (guia acrilamida)'),mN('Temperatura no centro',{unidade:'°C',min:75})]},
+  {nome:'Arrefecimento de cremes e recheios',frequencia:'Cada lote',campos:[mT('Produto'),mT('Lote'),mH('Hora de início'),mN('Temperatura ao fim de 2 h',{unidade:'°C',max:10})]}],
+ queijaria:[
+  {nome:'Receção de leite',frequencia:'Cada lote',campos:[mT('Produtor / rota'),mN('Quantidade',{unidade:'L'}),mN('Temperatura',{unidade:'°C',max:6}),mC('Pesquisa de inibidores'),mN('Acidez',{unidade:'°D'}),mC('Aspeto e cheiro')]},
+  {nome:'Pasteurização',frequencia:'Cada lote',campos:[mT('Lote'),mN('Temperatura',{unidade:'°C',min:72}),mN('Tempo',{unidade:'s',min:15}),mC('Registo do termógrafo'),mC('Teste da fosfatase')],instrucoes:'Mínimo 72 °C durante 15 s (ou binómio equivalente validado).'},
+  {nome:'Controlo de fabrico',frequencia:'Cada lote',campos:[mT('Lote'),mN('Leite utilizado',{unidade:'L'}),mN('Temperatura de coagulação',{unidade:'°C'}),mN('pH',{min:4.5,max:6.8}),mN('Sal',{unidade:'%'}),mN('Nº de queijos',{unidade:'un'})]},
+  {nome:'Câmara de cura — temperatura e humidade',frequencia:'Diária',itens:'Câmara de cura 1',campos:[mN('Temperatura',{unidade:'°C',min:6,max:14}),mN('Humidade relativa',{unidade:'%',min:80,max:95})]},
+  {nome:'Viragem e lavagem de queijos em cura',frequencia:'Quando aplicável',campos:[mT('Lote'),mL('Operação','Viragem;Lavagem;Untagem;Embalagem'),mC('Aspeto da casca')]}],
+ restauracao:[
+  {nome:'Óleo de fritura',frequencia:'Diária',itens:'Fritadeira 1\nFritadeira 2',campos:[mN('Compostos polares',{unidade:'%',max:25}),mN('Temperatura',{unidade:'°C',max:180}),mS('Óleo mudado'),mC('Cor / cheiro')],instrucoes:'Compostos polares acima de 25 % obrigam à mudança do óleo (Portaria 1135/95). Óleo usado vai para recolha (DL 267/2009).'},
+  {nome:'Confeção — temperatura no centro',frequencia:'Cada lote',campos:[mT('Prato / produto'),mH('Hora'),mN('Temperatura no centro',{unidade:'°C',min:75})]},
+  {nome:'Arrefecimento rápido',frequencia:'Cada lote',campos:[mT('Produto'),mH('Hora de início'),mN('Temperatura inicial',{unidade:'°C'}),mN('Temperatura ao fim de 2 h',{unidade:'°C',max:10})],instrucoes:'De 60 °C para menos de 10 °C em 2 horas (abatedor).'},
+  {nome:'Manutenção a quente / regeneração',frequencia:'Diária',itens:'Banho-maria\nVitrine quente',campos:[mN('Temperatura',{unidade:'°C',min:65}),mH('Hora')]},
+  {nome:'Amostras-testemunho',frequencia:'Cada lote',campos:[mT('Refeição / prato'),mT('Data de recolha'),mS('Recolhida (≥100 g)'),mC('Identificação e conservação')]}],
+ talho:[
+  {nome:'Picagem de carne',frequencia:'Cada lote',campos:[mT('Espécie / produto'),mT('Lote'),mN('Temperatura da carne',{unidade:'°C',max:2}),mN('Quantidade',{unidade:'kg'}),mC('Higienização da picadora')]},
+  {nome:'Controlo de cura / fumeiro',frequencia:'Diária',itens:'Fumeiro / câmara de cura',campos:[mN('Temperatura',{unidade:'°C'}),mN('Humidade',{unidade:'%'}),mT('Lotes presentes')]},
+  {nome:'Doseamento de sal nitritado / aditivos',frequencia:'Cada lote',campos:[mT('Lote'),mN('Carne',{unidade:'kg'}),mN('Aditivo',{unidade:'g'}),mN('Dose',{unidade:'g/kg'}),mC('Dentro da dose da ficha técnica')]}],
+ pescado:[
+  {nome:'Receção e inspeção de pescado',frequencia:'Cada lote',campos:[mT('Espécie'),mT('Lote'),mN('Temperatura',{unidade:'°C',max:2}),mL('Frescura','Extra;A;B;Não admitido'),mC('Inspeção visual de parasitas')]},
+  {nome:'Gelo e máquina de gelo',frequencia:'Semanal',campos:[mC('Gelo limpo e sem odores'),mC('Higienização da máquina')]}],
+ horto:[
+  {nome:'Lavagem e desinfeção de hortofrutícolas',frequencia:'Cada lote',campos:[mT('Produto'),mN('Concentração do desinfetante',{unidade:'ppm'}),mN('Tempo de contacto',{unidade:'min'}),mC('Enxaguamento')]},
+  {nome:'Calibre e aspeto à receção',frequencia:'Cada lote',campos:[mT('Produto'),mT('Lote'),mL('Categoria','Extra;I;II'),mC('Aspeto / pragas / podridões')]}],
+ distribuicao:[
+  {nome:'Higienização e temperatura de veículos',frequencia:'Diária',itens:'Veículo 1\nVeículo 2',campos:[mT('Matrícula'),mN('Temperatura da caixa',{unidade:'°C',max:5}),mC('Limpeza da caixa'),mS('Termógrafo a funcionar')]},
+  {nome:'Expedição',frequencia:'Cada lote',campos:[mT('Cliente'),mT('Lotes expedidos'),mN('Temperatura do produto',{unidade:'°C'}),mC('Estado das embalagens')]}],
+ bebidas:[
+  {nome:'Controlo de fermentação (vinificação)',frequencia:'Diária',itens:'Cuba 1\nCuba 2',campos:[mN('Temperatura',{unidade:'°C',max:30}),mN('Densidade',{unidade:'g/L'}),mT('Operação (remontagem…)')]},
+  {nome:'Engarrafamento',frequencia:'Cada lote',campos:[mT('Lote'),mN('SO2 livre',{unidade:'mg/L'}),mN('Volume de enchimento',{unidade:'mL'}),mC('Rolhamento / capsulagem'),mC('Rótulo e lote')]}]
+};
+function modLib(){
+  const secs=S.empresa.sectores||[]; const have=new Set(D('modelos').map(x=>norm(x.nome)));
+  const groups=[['comum','Comum a todos os sectores'],...Object.keys(MODELOS_LIB).filter(k=>k!=='comum'&&SECT[k]).map(k=>[k,SECT[k].n])];
+  const body='<p class="sm">Escolha os modelos a criar. Depois pode alterar campos, limites e linhas de cada um.</p>'+groups.map(([k,n])=>'<h3 style="margin:12px 0 4px">'+esc(n)+(secs.includes(k)?' <span class="bd ok">o seu sector</span>':'')+'</h3>'+
+    MODELOS_LIB[k].map((m,i)=>{ const ex=have.has(norm(m.nome)); return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-k="'+k+'" data-i="'+i+'" style="width:auto;margin-top:3px"'+(ex?' disabled':((k==='comum'||secs.includes(k))?' checked':''))+'><span>'+esc(m.nome)+' <span class="mut sm">· '+esc(m.frequencia)+' · '+m.campos.map(c=>c.nome).join(', ')+'</span>'+(ex?' <span class="bd">já existe</span>':'')+'</span></label>'; }).join('')).join('');
+  modal('Modelos de registo do sector',body,[{l:'Cancelar',fn:()=>closeModal(1)},{l:'Criar selecionados',c:'p',fn:r=>{
+    const sel=[...r.querySelectorAll('input[data-k]:checked')].map(x=>({k:x.dataset.k,m:MODELOS_LIB[x.dataset.k][+x.dataset.i]})); if(!sel.length){ toast('Escolha pelo menos um modelo'); return; }
+    sel.forEach(({k,m})=>D('modelos').push({id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',nome:m.nome,sector:k==='comum'?'Comum':SECT[k].n,frequencia:m.frequencia,itens:m.itens||'',instrucoes:m.instrucoes||'',ativo:'Sim',
+      campos:m.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min!=null?String(c.min):'',max:c.max!=null?String(c.max):'',opcoes:c.opcoes||''}))}));
+    save(); closeModal(1); render(); toast(sel.length+' modelo(s) criado(s). Já pode preencher em «Outros registos».',5000); }}],1);
+}
+/* ---------- Importar o modelo (impresso) que a empresa já usa ---------- */
+function guessCampo(h){ const t=String(h).replace(/\s+/g,' ').trim(); const n=norm(t)+' '+t.toLowerCase(); const c={nome:t,tipo:'Número',unidade:'',min:'',max:'',opcoes:''};
+  const u=t.match(/\(([^)]*)\)/); const inner=u?u[1]:'';
+  const nums=(inner||t).replace(/,/g,'.').match(/-?\d+(?:\.\d+)?/g)||[];
+  if(/[°º]\s*c|temp/.test(n)||/°|º/.test(t)) c.unidade='°C';
+  else if(/\bph\b/.test(n)) c.unidade='';
+  else if(/%|percent|humidade|compostos polares/.test(n)) c.unidade='%';
+  else if(/\bkg\b/.test(n)) c.unidade='kg'; else if(/\bppm\b/.test(n)) c.unidade='ppm'; else if(/\bmin\b|minutos/.test(n)) c.unidade='min'; else if(/\blitros?\b|\(l\)/.test(n)) c.unidade='L';
+  if(/c\s*\/\s*nc|conforme|\bok\b|estado|verifica|avalia|aspeto|limpeza|controlo visual/.test(n)&&!c.unidade){ c.tipo='Conforme / Não conforme'; }
+  else if(/\bs\s*\/\s*n\b|sim\s*\/\s*n|\(s\/n\)/.test(n)){ c.tipo='Sim / Não'; }
+  else if(/^hora|\bhora\b/.test(n)&&!c.unidade){ c.tipo='Hora'; }
+  else if(/validade|^data\b/.test(n)&&!c.unidade){ c.tipo='Data'; }
+  else if(!c.unidade&&!/\bph\b|quant|peso|tempo|n\.?º|numero|valor|leitura|concentra|densidade|volume|acidez/.test(n)){ c.tipo='Texto'; }
+  if(c.tipo==='Número'){ if(/[≤<]|max|ate|até/.test(n)&&nums.length) c.max=nums[nums.length-1]; else if(/[≥>]|min/.test(n)&&nums.length) c.min=nums[0]; else if(nums.length>=2&&/\d\s*(a|-|–|\/)\s*-?\d/.test(inner||t)){ c.min=nums[0]; c.max=nums[1]; } }
+  c.nome=t.replace(/\s*\([^)]*\)\s*/g,' ').replace(/\s*[≤≥<>]=?\s*-?\d+[.,]?\d*\s*(°c|ºc|%)?/gi,'').trim()||t;
+  return c; }
+const SKIP_COL=/^(data|dia|data\s*\/\s*hora|n\.?º|nº|#)$|respons|rubrica|assinatura|visto|operador|funcionario|executado por|verificado por|observa|a[cç][aã]o corretiva|medida corretiva/;
+const ITEM_COL=/^(equipamento|área|area|local|produto|item|ponto|zona|câmara|camara|dispositivo|isco|fritadeira|veículo|veiculo|tarefa|requisito|descri)/i;
+function modeloFromTable(rows,titulo){ rows=rows.map(r=>r.map(c=>String(c||'').replace(/\s+/g,' ').trim()));
+  const hi=headerRow(rows); const head=rows[hi]||[]; const before=rows.slice(0,hi).map(r=>r.filter(Boolean).join(' ')).filter(Boolean);
+  const nome=before.find(x=>x.length>4&&x.length<90&&!/empresa|morada|nif|página|pagina/i.test(x))||titulo;
+  const body=rows.slice(hi+1).filter(r=>r.some(Boolean));
+  let itemCol=-1; if(head[0]&&ITEM_COL.test(head[0])) itemCol=0;
+  else { const col0=body.map(r=>r[0]).filter(Boolean); if(col0.length>=2&&col0.every(v=>!/^\d+([.,/-]\d+)*$/.test(v)&&isNaN(Date.parse(v)))&&new Set(col0).size===col0.length&&body.slice(0,col0.length).every(r=>r.slice(1).every(c=>!c))) itemCol=0; }
+  const itens=itemCol>=0?[...new Set(body.map(r=>r[itemCol]).filter(Boolean))].slice(0,40):[];
+  const campos=head.map((h,i)=>({h,i})).filter(x=>x.h&&x.i!==itemCol&&!SKIP_COL.test(norm(x.h))).map(x=>guessCampo(x.h));
+  return {nome,itens:itens.join('\n'),campos}; }
+function modeloFromLines(lines,titulo){ const L=lines.map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x&&x.length<140);
+  const nome=L.find(x=>x.length>4&&x.length<90&&!/empresa|morada|nif|página|pagina|^\d+$/i.test(x))||titulo;
+  const itens=L.filter(x=>x!==nome&&!/^(data|hora|respons|rubrica|assinatura|observa|visto|página|pagina)/i.test(x)&&!/^[\d\s.,:/-]+$/.test(x)&&x.replace(/[^A-Za-zÀ-ú]/g,'').length>=4).slice(0,40);
+  return {nome,itens:itens.join('\n'),campos:[{nome:'Avaliação',tipo:'Conforme / Não conforme'},{nome:'Observação',tipo:'Texto'}]}; }
+async function importModelo(file){
+  const n=file.name.toLowerCase(); const titulo=file.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');
+  const st=modal('A ler o impresso','<p id="imSt" class="sm">A abrir '+esc(file.name)+'…</p>',[{l:'Cancelar',fn:()=>closeModal(2)}],2);
+  const prog=t=>{ const el=st.querySelector('#imSt'); if(el) el.textContent=t; };
+  let mod=null;
+  try{
+    if(/\.(xlsx|xls|ods|csv)$/.test(n)){ const sh=await readSheets(file); const best=Object.values(sh).sort((a,b)=>b.length-a.length)[0]||[]; mod=modeloFromTable(best,titulo); }
+    else if(n.endsWith('.docx')){ await loadScript(LIB.docx); const r=await mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()}); const doc=new DOMParser().parseFromString(r.value,'text/html');
+      const tb=[...doc.querySelectorAll('table')].map(t=>[...t.querySelectorAll('tr')].map(tr=>[...tr.children].map(td=>td.textContent))).sort((a,b)=>b.length*(b[0]||[]).length-a.length*(a[0]||[]).length)[0];
+      const pre=[...doc.body.children].filter(e=>e.tagName!=='TABLE').map(e=>e.textContent.trim()).filter(Boolean);
+      if(tb&&tb.length&&Math.max(...tb.map(r=>r.length))>=2){ mod=modeloFromTable(tb,pre.find(x=>x.length>4&&x.length<90)||titulo); if(pre.length&&mod.nome===titulo) mod.nome=pre[0].slice(0,90); }
+      else mod=modeloFromLines(pre,titulo); }
+    else if(n.endsWith('.pdf')){ const t=await pdfText(file,prog); mod=modeloFromLines(t.split('\n'),titulo); }
+    else if(/^image\//.test(file.type)){ const t=await ocr(file,prog); mod=modeloFromLines(t.split('\n'),titulo); }
+    else { closeModal(2); toast('Formato não suportado. Use Excel, Word (.docx), PDF ou foto.'); return; }
+  }catch(e){ closeModal(2); toast('Não foi possível ler o ficheiro: '+(e.message||e),6000); return; }
+  closeModal(2);
+  if(!mod.campos.length) mod.campos=[{nome:'Avaliação',tipo:'Conforme / Não conforme'}];
+  const fid=uid(); let docs=[]; try{ await FDB.put(fid,file); docs=[{id:fid,name:file.name,type:file.type,size:file.size}]; }catch(e){}
+  openForm('modelos',null,{nome:mod.nome,sector:'Específico da empresa',itens:mod.itens,campos:mod.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min||'',max:c.max||'',opcoes:c.opcoes||''})),docs});
+  toast('Impresso lido: '+mod.campos.length+' campo(s)'+(mod.itens?' e '+mod.itens.split('\n').length+' linha(s)':'')+'. Confirme, ajuste e guarde.',7000);
+}
 function genericValidate(key,r){
   const m=M[key];
   for(const f of m.f){ const v=r[f.k]; if(v==null||v==='') continue;
@@ -1040,6 +1368,7 @@ function signPad(o){ return new Promise(res=>{
 async function printRecord(key,r){
   const m=M[key]; let h='<p><b>'+esc(S.empresa.nome||'')+'</b>'+(S.empresa.nif?' · NIF '+esc(S.empresa.nif):'')+'</p><h1>'+esc(m.t)+'</h1><h2>'+esc(m.label(r))+'</h2><table>';
   m.f.forEach(f=>{ if(['files','sig'].includes(f.t)) return; const v=r[f.k];
+    if(f.t==='dyn'){ const t=f.print(r); if(t) h+='<tr><th>'+esc(f.l)+'</th><td>'+t+'</td></tr>'; return; }
     if(f.t==='lines'){ if(!(v||[]).length) return; h+='<tr><th>'+esc(f.l)+'</th><td><table><thead><tr>'+f.cols.map(c=>'<th>'+esc(c.l)+'</th>').join('')+'</tr></thead><tbody>'+v.map(l=>'<tr>'+f.cols.map(c=>'<td>'+esc(c.t==='ref'?lbl(c.ref,l[c.k]):c.t==='date'?fDate(l[c.k]):l[c.k])+'</td>').join('')+'</tr>').join('')+'</tbody></table></td></tr>'; return; }
     const t=fmt(key,f.k,r,true); if(t) h+='<tr><th>'+esc(f.l)+'</th><td style="white-space:pre-wrap">'+t+'</td></tr>'; });
   if(r.conforme&&!m.f.find(x=>x.k==='conforme')) h+='<tr><th>Conformidade</th><td>'+esc(r.conforme)+(r._prob?' — '+esc(r._prob):'')+'</td></tr>';
@@ -1382,6 +1711,8 @@ function bindView(key){
   v.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>{ location.hash='#/'+el.dataset.go; }));
   v.querySelectorAll('[data-new]').forEach(el=>{ if(lvl(el.dataset.new)<2){ el.remove(); return; } el.addEventListener('click',()=>openForm(el.dataset.new)); });
   v.querySelectorAll('[data-print]').forEach(el=>el.onclick=()=>window.print());
+  const qt=v.querySelector('#qTemp'); if(qt&&lvl('temperaturas')<2) qt.remove(); else if(qt) qt.onclick=tempAll;
+  const qp=v.querySelector('#qProdDia'); if(qp&&lvl('lotes')<2) qp.remove(); else if(qp) qp.onclick=prodDia;
   const qs=v.querySelector('#qScan'); if(qs&&lvl('rececao')<2) qs.remove(); else if(qs) qs.onclick=()=>{ const r=openForm('rececao'); openScanner((code,msg)=>applyScan(r,code,msg),true); };
   if(M[key]){
     v.querySelectorAll('tbody tr[data-id]').forEach(tr=>tr.onclick=e=>{ if(e.target.closest('[data-del]')) return; openForm(key,tr.dataset.id); });
@@ -1391,6 +1722,10 @@ function bindView(key){
     if(b('verif')) b('verif').onclick=()=>{ const lv=lastVerif(key); const ds=D(key).map(recDate).filter(Boolean).sort(); openForm('verificacoes',null,{registo:key,de:lv?addDays(lv.ate,1):(ds[0]||today()),ate:today()}); };
     if(b('modelo')) b('modelo').onclick=pickModelo;
     if(b('newscan')) b('newscan').onclick=()=>{ const r=openForm('rececao'); openScanner((code,msg)=>applyScan(r,code,msg),true); };
+    if(b('tempall')) b('tempall').onclick=tempAll;
+    if(b('proddia')) b('proddia').onclick=prodDia;
+    if(b('modlib')) b('modlib').onclick=modLib;
+    if(b('modimp')) b('modimp').onclick=()=>{ const i=document.createElement('input'); i.type='file'; i.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf,image/*'; i.onchange=()=>{ if(i.files[0]) importModelo(i.files[0]); }; i.click(); };
     const q=v.querySelector('#q'); if(q) q.oninput=()=>{ const t=q.value.toLowerCase(); v.querySelectorAll('tbody tr').forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(t)?'':'none'); };
   }
   ({empresa:bindEmpresa,analise:bindAnalise,dados:bindDados,rastreio:bindRastreio,assistente:bindAssistente,stock:bindStock,importar:bindImportar,utilizadores:bindUtilizadores,inspecao:bindInspecao}[key]||(()=>{}))();
@@ -1401,7 +1736,7 @@ function exportCSV(key){
   const m=M[key]; const cols=m.f.filter(f=>f.t!=='files'&&f.t!=='sig').map(f=>f.k); if(m.compute&&!cols.includes('conforme')) cols.push('conforme');
   const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"'; const un=s=>s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
   const lines=[cols.map(c=>q(colLabel(key,c))).join(';')];
-  sorted(key).forEach(r=>lines.push(cols.map(c=>{ const f=m.f.find(x=>x.k===c); if(f&&f.t==='lines') return q((r[c]||[]).map(l=>f.cols.map(cc=>cc.t==='ref'?lbl(cc.ref,l[cc.k]):l[cc.k]).filter(Boolean).join(' / ')).join(' | ')); return q(un(fmt(key,c,r,true))); }).join(';')));
+  sorted(key).forEach(r=>lines.push(cols.map(c=>{ const f=m.f.find(x=>x.k===c); if(f&&f.t==='dyn') return q(un(fmt(key,'resumo',r,true)).replace(/ \(\+\d+\)$/,'')); if(f&&f.t==='lines') return q((r[c]||[]).map(l=>f.cols.map(cc=>cc.t==='ref'?lbl(cc.ref,l[cc.k]):l[cc.k]).filter(Boolean).join(' / ')).join(' | ')); return q(un(fmt(key,c,r,true))); }).join(';')));
   download('﻿'+lines.join('\r\n'),key+'_'+today()+'.csv','text/csv');
 }
 function download(content,name,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(content instanceof Blob?content:new Blob([content],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
@@ -1752,7 +2087,7 @@ function viewPlano(){
 function viewStock(){
   const lots=stockLots(); const mats=sorted('materias');
   let h='<h1>Stock</h1><p class="sub">Calculado a partir das receções, menos o consumido nas produções (pelas receitas) e os movimentos de stock.</p>';
-  h+='<div class="row noprint" style="margin-bottom:12px"><button class="btn p" data-new="rececao">+ Receção</button><button class="btn" data-new="lotes">+ Produção</button><button class="btn" data-new="ajustes">+ Movimento / quebra</button><span class="sp"></span><button class="btn s" data-print>Imprimir</button></div>';
+  h+='<div class="row noprint" style="margin-bottom:12px"><button class="btn p" data-new="rececao">+ Receção</button><button class="btn" data-new="lotes">+ Produção</button><button class="btn" id="qProdDia">Produção do dia</button><button class="btn" data-new="ajustes">+ Movimento / quebra</button><span class="sp"></span><button class="btn s" data-print>Imprimir</button></div>';
   if(!mats.length) return h+'<div class="card empty">Registe primeiro as matérias-primas.</div>';
   mats.forEach(m=>{ const ls=lots.filter(l=>l.materia===m.id); const tot=rnd(ls.reduce((s,l)=>s+Math.max(0,l.disp),0)); const act=ls.filter(l=>l.disp>0);
     const nx=act.map(l=>l.validade).filter(Boolean).sort()[0]; const low=num(m.stockMin)!=null&&tot<+m.stockMin; const exp=act.some(l=>l.validade&&daysTo(l.validade)<0);
@@ -1795,6 +2130,7 @@ function alerts(){
   D('formacao').forEach(f=>{ if(f.estado==='Planeada'&&daysTo(f.data)<0) add('warn','Formação planeada por realizar: '+f.tema,'formacao'); else if(f.estado!=='Planeada'&&daysTo(f.validade)!=null&&daysTo(f.validade)<0) add('warn','Formação a necessitar de reciclagem: '+f.tema,'formacao'); });
   D('nc').filter(n=>n.estado!=='Fechada').forEach(n=>{ const d=daysTo(n.prazo); if(d!=null&&d<0) add('danger','NC com prazo ultrapassado: '+String(n.descricao).slice(0,80),'nc'); });
   D('equipamentos').filter(isFrio).forEach(e=>{ if(!D('temperaturas').some(t=>t.equipamento===e.id&&(t.dt||'').startsWith(hoje))) add('warn','Sem registo de temperatura hoje: '+e.nome,'temperaturas'); });
+  D('modelos').filter(m=>m.ativo!=='Não'&&m.frequencia==='Diária').forEach(m=>{ if(!D('registos').some(r=>r.modelo===m.id&&(r.dt||'').startsWith(hoje))) add('warn','Registo diário por preencher: '+m.nome,'registos'); });
   D('paramControlo').filter(p=>p.frequencia==='Diária').forEach(p=>{ if(!D('controlos').some(c=>c.param===p.id&&(c.dt||'').startsWith(hoje))) add('warn','Controlo diário por registar: '+p.nome,'controlos'); });
   D('planoAnalises').forEach(p=>{ const nx=proxAnalise(p); const d=daysTo(nx); if(!lastAnalise(p.id)) add('info','Análise ainda sem resultado: '+p.amostra,'planoAnalises'); else if(d!=null&&d<0) add('warn','Análise em atraso: '+p.amostra+' (desde '+fDate(nx)+')','planoAnalises'); else if(d!=null&&d<=15) add('info','Análise a fazer em '+d+' dia(s): '+p.amostra,'planoAnalises'); });
   [['pragas','Visita de controlo de pragas em atraso'],['auditorias','Auditoria/verificação em atraso']].forEach(([k,t])=>{ const last=sorted(k)[0]; if(last&&last.proxima&&daysTo(last.proxima)<0) add('warn',t+' ('+fDate(last.proxima)+')',k); });
@@ -1824,7 +2160,7 @@ function viewPainel(){
   let h='<h1>Painel</h1><p class="sub">'+esc(S.empresa.nome||'')+' · '+new Date().toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p>';
   h+='<div class="kpis"><div class="kpi" data-go="nc"><b style="color:'+(ncA?'var(--bad)':'var(--ok)')+'">'+ncA+'</b><span>NC abertas</span></div><div class="kpi" data-go="temperaturas"><b>'+recHoje+'</b><span>Registos hoje</span></div>'+
      '<div class="kpi" data-go="pccRegisto"><b>'+(pct==null?'—':pct+'%')+'</b><span>Conformidade (30 dias)</span></div><div class="kpi" data-go="assistente"><b>'+impl+'%</b><span>Implementação HACCP</span></div></div>';
-  h+='<div class="card"><b>Registo rápido</b><div class="row" style="margin-top:10px"><button class="btn p" data-new="temperaturas">Temperatura</button><button class="btn p" id="qScan">Receção por leitura</button><button class="btn" data-new="rececao">Receção</button><button class="btn" data-new="lotes">Produção</button>'+
+  h+='<div class="card"><b>Registo rápido</b><div class="row" style="margin-top:10px"><button class="btn p" id="qTemp">Temperaturas</button><button class="btn p" id="qScan">Receção por leitura</button><button class="btn" data-new="rececao">Receção</button><button class="btn" data-new="lotes">Produção</button><button class="btn" id="qProdDia">Produção do dia</button>'+(D('modelos').some(x=>x.ativo!=='Não')?'<button class="btn" data-new="registos">Outros registos</button>':'')+
      (D('paramControlo').length?'<button class="btn" data-new="controlos">Controlo específico</button>':'')+'<button class="btn" data-new="epiEntregas">Entrega de EPI</button>'+'<button class="btn" data-new="higRegisto">Higienização</button>'+(ha.pccs.length?'<button class="btn" data-new="pccRegisto">PCC</button>':'')+'<button class="btn" data-new="nc">Não conformidade</button></div></div>';
   h+='<div class="card"><b>Alertas</b> <span class="mut sm">('+al.length+')</span><div style="margin-top:10px">'+(al.length?al.map(x=>'<div class="alert '+x.lvl+'" data-go="'+x.k+'"><i>'+(x.lvl==='danger'?'!!':x.lvl==='warn'?'!':'i')+'</i><span>'+esc(x.t)+'</span></div>').join(''):'<p class="mut">Sem alertas. Tudo em dia.</p>')+'</div></div>';
   const frio=D('equipamentos').filter(isFrio);
@@ -1893,8 +2229,9 @@ async function loadDemo(){
   const pP={id:I(),nome:'Pão de trigo',categoria:'Pão',codigo:'PT',vidaUtil:2,descricao:'Pão de trigo cozido em forno',ingredientes:'Farinha de trigo, água, sal, fermento',alergenos:['Cereais com glúten'],conservacao:'Ambiente',validade:'2 dias',embalagem:'Saco de papel',uso:'Consumo direto',consumidores:'População em geral; contém glúten'};
   const pB={id:I(),nome:'Bolo de manteiga',categoria:'Pastelaria seca',codigo:'BM',vidaUtil:7,descricao:'Bolo cozido embalado',ingredientes:'Farinha de trigo, manteiga, ovo, açúcar',alergenos:['Cereais com glúten','Leite','Ovos'],conservacao:'Ambiente',validade:'7 dias',embalagem:'Saco plástico alimentar',uso:'Consumo direto',consumidores:'População em geral'};
   d.produtos=[pP,pB];
-  d.receitas=[{id:I(),nome:'Pão de trigo (fornada 100 un)',produto:pP.id,rendimento:100,unidade:'un',ingredientes:[{id:I(),materia:mF.id,qtd:30},{id:I(),materia:mS.id,qtd:0.6},{id:I(),materia:mL.id,qtd:0.5},{id:I(),materia:mE.id,qtd:100}],modo:'Amassar 15 min; fermentar 90 min; cozer a 230 °C durante 35 min.'},
+  d.receitas=[{id:I(),nome:'Pão de trigo (fornada 100 un)',produto:pP.id,rendimento:100,unidade:'un',base:mF.id,ingredientes:[{id:I(),materia:mF.id,qtd:30,modo:'Proporcional',aprov:'100'},{id:I(),materia:mS.id,qtd:2,modo:'% do ingrediente base',aprov:'100'},{id:I(),materia:mL.id,qtd:1.7,modo:'% do ingrediente base',aprov:'100'},{id:I(),materia:mE.id,qtd:100,modo:'Proporcional',aprov:'100'}],modo:'Amassar 15 min; fermentar 90 min; cozer a 230 °C durante 35 min.'},
     {id:I(),nome:'Bolo de manteiga (20 un)',produto:pB.id,rendimento:20,unidade:'un',ingredientes:[{id:I(),materia:mF.id,qtd:4},{id:I(),materia:mM.id,qtd:2},{id:I(),materia:mO.id,qtd:1.5},{id:I(),materia:mA.id,qtd:2}],modo:'Cozer a 180 °C durante 45 min.'}];
+  ['comum','padaria'].forEach(k=>MODELOS_LIB[k].slice(0,2).forEach(m=>d.modelos=(d.modelos||[]).concat([{id:I(),nome:m.nome,sector:k==='comum'?'Comum':SECT[k].n,frequencia:m.frequencia,itens:m.itens||'',instrucoes:m.instrucoes||'',ativo:'Sim',campos:m.campos.map(c=>({id:I(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min!=null?String(c.min):'',max:c.max!=null?String(c.max):'',opcoes:c.opcoes||''}))}])));
   loadModelo('Padaria / pastelaria','replace','Padaria / pastelaria'); d.etapas.find(e=>e.tipo==='termico').parametros='Forno 180–250 °C, 30–45 min';
   const cam={id:I(),nome:'Câmara de refrigeração',tipo:'Frio positivo',local:'Armazém',tmin:0,tmax:5,periodicidade:180,ultima:addDays(t,-150),ativo:'Sim'};
   d.equipamentos=[cam,{id:I(),nome:'Forno',tipo:'Equipamento térmico',local:'Fabrico',periodicidade:365,ultima:addDays(t,-370),ativo:'Sim'},{id:I(),nome:'Termómetro de sonda',tipo:'Instrumento de medição',periodicidade:365,ultima:addDays(t,-100),ativo:'Sim'}];
@@ -1940,7 +2277,7 @@ async function hashPw(pw,salt){ const data=new TextEncoder().encode(salt+'|'+pw)
 async function mkUser(nome,login,pw,perfil,perms){ const salt=uid(); return {id:uid(),nome,login,perfil,ativo:'Sim',perms:perms||{},salt,hash:await hashPw(pw,salt)}; }
 const allTo=n=>()=>Object.fromEntries(navItems().map(x=>[x.k,n]));
 const PRESETS={
- 'Operador de produção':()=>({visitantes:2,temperaturas:2,higRegisto:2,controlos:2,pccRegisto:2,lotes:2,rececao:2,receitas:1,stock:1,ajustes:2,nc:2,produtos:1,materias:1,documentos:1}),
+ 'Operador de produção':()=>({registos:2,modelos:1,visitantes:2,temperaturas:2,higRegisto:2,controlos:2,pccRegisto:2,lotes:2,rececao:2,receitas:1,stock:1,ajustes:2,nc:2,produtos:1,materias:1,documentos:1}),
  'Receção / armazém':()=>({rececao:2,stock:1,ajustes:2,materias:1,fornecedores:1,temperaturas:2,nc:2,rastreio:1,documentos:1}),
  'Qualidade / HACCP':()=>({...allTo(3)(),dados:0,utilizadores:0}),
  'RH / segurança no trabalho':()=>({colaboradores:3,formacao:3,epiEntregas:3,epis:3,documentos:1,importar:2}),
