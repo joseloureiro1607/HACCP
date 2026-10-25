@@ -659,11 +659,11 @@ const M={
   list:['data','linha','qtd','motivo','responsavel']},
 
  fornecedores:{t:'Fornecedores',d:'Seleção, aprovação e avaliação periódica de fornecedores.',label:r=>r.nome,
-  f:[{k:'nome',l:'Fornecedor',req:1},{k:'nif',l:'NIF'},{k:'contacto',l:'Contacto'},{k:'email',l:'Email'},{k:'fornece',l:'Produtos fornecidos',t:'textarea'},
+  f:[{k:'nome',l:'Fornecedor',req:1},{k:'nif',l:'NIF'},{k:'morada',l:'Morada'},{k:'codPostal',l:'Código postal'},{k:'localidade',l:'Localidade'},{k:'pessoa',l:'Pessoa de contacto'},{k:'contacto',l:'Telefone / contacto'},{k:'email',l:'Email'},{k:'site',l:'Website'},{k:'fornece',l:'Produtos fornecidos',t:'textarea'},
      {k:'certificacao',l:'Certificação / nº de controlo veterinário'},{k:'avaliacao',l:'Data da última avaliação',t:'date'},
      {k:'classificacao',l:'Classificação',t:'sel',o:['A - Aprovado','B - Aprovado c/ condições','C - Não aprovado','Em avaliação']},
      {k:'proxima',l:'Próxima avaliação',t:'date'},{k:'obs',l:'Observações',t:'textarea'},{k:'docs',l:'Fichas técnicas, certificados e questionários',t:'files'}],
-  list:['nome','fornece','classificacao','proxima']},
+  list:['nome','nif','contacto','fornece','classificacao','proxima']},
  equipamentos:{t:'Equipamentos',d:'Adicione, desative ou elimine equipamentos. Com limites de temperatura, os registos são validados automaticamente.',label:r=>r.nome+(r.ativo==='Não'?' (inativo)':''),
   f:[{k:'nome',l:'Equipamento',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Frio positivo','Frio negativo','Equipamento térmico','Instrumento de medição','Equipamento de produção','Veículo','Outro']},
      {k:'local',l:'Localização'},{k:'serie',l:'Marca / nº de série'},{k:'tmin',l:'Temp. mínima (°C)',t:'number'},{k:'tmax',l:'Temp. máxima (°C)',t:'number'},
@@ -1119,6 +1119,7 @@ function openForm(key,id,preset){
     Object.assign(rec,preset||{}); m.f.filter(f=>f.t==='lines').forEach(f=>{ if(!rec[f.k]||!rec[f.k].length) rec[f.k]=[{}]; }); }
   let body=(canSave?(m.tools||''):'<div class="alert info"><i>i</i><span>Apenas consulta'+(ex&&L>=2?' — só pode alterar registos criados por si.':'.')+'</span></div>')+'<div class="grid">'+m.f.map(f=>fieldHTML(f,rec[f.k]??'')).join('')+'</div>';
   if(ex&&m.extra) body+=m.extra(ex);
+  if(rec.extra&&Object.keys(rec.extra).length) body+='<div class="card sm" style="margin:8px 0 0"><b>Outros dados (importados)</b><div class="grid" style="margin-top:6px">'+Object.entries(rec.extra).map(([k,v])=>'<label class="f"><span>'+esc(k)+'</span><input data-extra="'+esc(k)+'" value="'+esc(v)+'"></label>').join('')+'</div></div>';
   if(ex&&ex._nc){ const n=D('nc').find(x=>x.id===ex._nc); if(n) body+='<p class="sm">Não conformidade associada: '+badge(n.estado)+' <a href="#/nc" data-close>ver NC</a></p>'; }
   if(ex&&ex.conforme&&!m.f.find(x=>x.k==='conforme')) body+='<p class="sm">Conformidade calculada: '+badge(ex.conforme)+(ex._prob?' <span class="mut">'+esc(ex._prob)+'</span>':'')+'</p>';
   body+='<div class="card sm" style="margin:8px 0 0"><div class="row"><b class="sp">Assinaturas do registo</b>'+(canSave||(ex&&L>=1)?'<button type="button" class="btn s" data-addsig>+ Assinar</button>':'')+'</div><div class="sigs" data-sigs></div></div>';
@@ -1136,6 +1137,7 @@ function openForm(key,id,preset){
     for(const f of m.f.filter(f=>f.t==='files')){ const st=root._files[f.k]; for(const fl of st.add){ const fid=uid(); try{ await FDB.put(fid,fl); st.keep.push({id:fid,name:fl.name,type:fl.type,size:fl.size}); }catch(e){ toast('Não foi possível guardar o anexo '+fl.name); } } for(const d of st.del) await FDB.del(d).catch(()=>{}); v[f.k]=st.keep; }
     m.f.filter(f=>f.t==='sig').forEach(f=>{ if(v[f.k]){ v[f.k]={...v[f.k]}; delete v[f.k]._new; } });
     v.assinaturas=root._sigs.map(x=>{ const y={...x}; delete y._new; return y; });
+    if(root.querySelector('[data-extra]')){ v.extra={}; root.querySelectorAll('[data-extra]').forEach(x=>{ if(x.value.trim()) v.extra[x.dataset.extra]=x.value.trim(); }); }
     const cand={...(ex||{}),...v,id:ex?ex.id:'__novo__'};
     const err=genericValidate(key,cand)||(m.validate&&m.validate(cand));
     if(err){ toast(err,6000); return; }
@@ -1503,6 +1505,7 @@ async function printRecord(key,r){
     if(f.t==='dyn'){ const t=f.print(r); if(t) h+='<tr><th>'+esc(f.l)+'</th><td>'+t+'</td></tr>'; return; }
     if(f.t==='lines'){ if(!(v||[]).length) return; h+='<tr><th>'+esc(f.l)+'</th><td><table><thead><tr>'+f.cols.map(c=>'<th>'+esc(c.l)+'</th>').join('')+'</tr></thead><tbody>'+v.map(l=>'<tr>'+f.cols.map(c=>'<td>'+esc(c.t==='ref'?lbl(c.ref,l[c.k]):c.t==='date'?fDate(l[c.k]):l[c.k])+'</td>').join('')+'</tr>').join('')+'</tbody></table></td></tr>'; return; }
     const t=fmt(key,f.k,r,true); if(t) h+='<tr><th>'+esc(f.l)+'</th><td style="white-space:pre-wrap">'+t+'</td></tr>'; });
+  Object.entries(r.extra||{}).forEach(([k,v])=>{ h+='<tr><th>'+esc(k)+'</th><td>'+esc(v)+'</td></tr>'; });
   if(r.conforme&&!m.f.find(x=>x.k==='conforme')) h+='<tr><th>Conformidade</th><td>'+esc(r.conforme)+(r._prob?' — '+esc(r._prob):'')+'</td></tr>';
   h+='</table>';
   const sigs=[...m.f.filter(f=>f.t==='sig'&&r[f.k]).map(f=>({...r[f.k],papel:r[f.k].papel||f.l})),...(r.assinaturas||[])];
@@ -1721,9 +1724,26 @@ function mapTargets(m){ const t=[];
     if(f.t==='lines') f.cols.forEach(c=>t.push({k:f.k+'.'+c.k,l:f.l.replace(/\s*\(.*\)$/,'')+' › '+c.l,f:c,line:f.k}));
     else { t.push({k:f.k,l:f.l,f}); if(f.t==='dt') t.push({k:f.k+'__hora',l:f.l+' › hora (se em coluna separada)',f:{t:'time'}}); } });
   return t; }
+const SYN={nome:['nome','designacao','denominacao','razao social','empresa','fornecedor','cliente','entidade','firma','colaborador','funcionario','trabalhador','produto','artigo','equipamento','materia prima','ingrediente'],
+ nif:['nif','nipc','contribuinte','n contribuinte','no contribuinte','numero contribuinte','numero fiscal','vat','nif nipc'],
+ morada:['morada','endereco','rua','address','sede'],codPostal:['codigo postal','cod postal','cp','c postal','postal'],localidade:['localidade','cidade','concelho','local','freguesia'],
+ pessoa:['pessoa de contacto','pessoa contacto','responsavel comercial','interlocutor','contacto pessoa','comercial'],
+ contacto:['telefone','telemovel','tel','tlm','telef','contacto','contactos','phone','mobile','telefone telemovel','n telefone'],
+ email:['email','e mail','mail','correio eletronico','endereco eletronico'],site:['site','website','pagina web','web','url'],
+ fornece:['produtos fornecidos','produtos','fornece','artigos','gama','categoria de produtos','tipo de produto'],
+ certificacao:['certificacao','certificado','certificacoes','n controlo veterinario','controlo veterinario','numero veterinario','marca de salubridade','ncv','iso'],
+ classificacao:['classificacao','avaliacao final','estado de aprovacao','aprovacao','aprovado'],avaliacao:['data avaliacao','data da avaliacao','ultima avaliacao','avaliado em'],proxima:['proxima avaliacao','reavaliacao'],
+ obs:['observacoes','obs','notas','comentarios','nota'],ean:['ean','codigo de barras','cod barras','barcode','gtin'],codigo:['codigo','cod','referencia','ref','sku'],
+ unidade:['unidade','un','uni','unid'],funcao:['funcao','cargo','categoria profissional','posto'],admissao:['admissao','data admissao','data de admissao'],aptidao:['aptidao','ficha de aptidao','medicina do trabalho','validade aptidao'],
+ data:['data','dia','date'],dt:['data','data hora','data e hora'],valor:['valor','leitura','temperatura','temp','medicao'],responsavel:['responsavel','rubrica','operador','executado por','assinatura'],
+ lote:['lote','n lote','numero de lote','batch'],validade:['validade','data de validade','consumir ate','val'],qtd:['quantidade','qtd','qtde','peso','kg'],quantidade:['quantidade','qtd','qtde','peso'],
+ tipo:['tipo','categoria','familia'],local:['local','localizacao','zona','area'],tmin:['temp minima','temperatura minima','t min','min'],tmax:['temp maxima','temperatura maxima','t max','max'],serie:['n serie','numero de serie','marca','modelo','serie'],
+ alergenos:['alergenios','alergenos','alergenicos'],equipamento:['equipamento','camara','frigorifico','arca','vitrine','maquina','congelador','camara frigorifica','frio'],fornecedor:['fornecedor','entidade fornecedora','fornecido por'],materia:['materia prima','materia','produto','artigo','ingrediente','designacao'],produto:['produto','artigo','referencia'],colaborador:['colaborador','funcionario','trabalhador','nome'],plano:['tarefa','area','equipamento superficie','o que'],param:['parametro','controlo','controle'],documento:['documento','fatura','guia','n fatura','n guia','factura'],vidaUtil:['vida util','shelf life','prazo de validade dias'],ingredientes:['ingredientes','composicao'],titulo:['titulo','documento','nome do documento','designacao'],revisao:['revisao','proxima revisao']};
 function guessCol(head,tg){ if(tg.k.endsWith('__hora')) return head.findIndex(h=>/\bhora\b/.test(h)&&!/data/.test(h));
-  const nl=norm(tg.l.replace(/\s*\(.*\)$/,'')), nk=norm(tg.k.split('.').pop());
-  let i=head.findIndex(h=>h&&(h===nl||h===nk)); if(i<0) i=head.findIndex(h=>h&&h.length>2&&(nl.startsWith(h)||h.startsWith(nl.split(' ')[0])&&nl.split(' ')[0].length>3)); return i; }
+  const nl=norm(tg.l.replace(/\s*\(.*\)$/,'')), kk=tg.k.split('.').pop(), nk=norm(kk); const syn=(SYN[kk]||[]).map(norm);
+  let i=head.findIndex(h=>h&&(h===nl||h===nk||syn.includes(h))); if(i>=0) return i;
+  i=head.findIndex(h=>h&&syn.some(x=>x.length>3&&(h.startsWith(x+' ')||h.endsWith(' '+x)))); if(i>=0) return i;
+  i=head.findIndex(h=>h&&h.length>2&&(nl.startsWith(h)||h.startsWith(nl.split(' ')[0])&&nl.split(' ')[0].length>3)); return i; }
 function convVal(f,v,auto,created){
   v=String(v??'').trim(); if(!v) return '';
   const t=f.t||'text';
@@ -1744,35 +1764,51 @@ async function importTable(key,file){
   let sheets; try{ sheets=await readSheets(file); }catch(e){ toast('Não foi possível ler o ficheiro: '+(e.message||e),6000); return; }
   const names=Object.keys(sheets); if(!names.length){ toast('Ficheiro sem dados'); return; }
   const tg=mapTargets(m);
-  const root=modal('Importar para «'+m.t+'»','<p class="sm">Ficheiro: <b>'+esc(file.name)+'</b>. Indique que coluna corresponde a cada campo. As correspondências óbvias já estão escolhidas.</p>'+
+  const root=modal('Importar para «'+m.t+'»','<p class="sm">Ficheiro: <b>'+esc(file.name)+'</b>. A app leu os cabeçalhos do ficheiro e associou cada coluna a um campo. Confirme: as colunas sem campo correspondente são guardadas como <b>dados extra</b> do registo (nada se perde), ou escolha «ignorar».</p>'+
     '<div class="grid"><label class="f"><span>Folha</span><select id="mpS">'+names.map(n=>'<option>'+esc(n)+'</option>').join('')+'</select></label><label class="f"><span>Linha do cabeçalho</span><input type="number" id="mpH" min="1" value="1"></label></div>'+
-    '<div id="mpGrid"></div><label class="sm" style="display:flex;gap:6px;align-items:center;margin:10px 0"><input type="checkbox" id="mpAuto" checked style="width:auto"> Criar automaticamente fornecedores, equipamentos, matérias-primas, etc. que ainda não existam</label><div id="mpPrev" class="sm"></div>',
+    '<div id="mpGrid"></div><div id="mpReq" class="sm"></div>'+
+    '<label class="sm" style="display:flex;gap:6px;align-items:center;margin:10px 0 4px"><input type="checkbox" id="mpUpd" checked style="width:auto"> Se já existir (mesmo NIF ou mesmo nome), atualizar em vez de duplicar</label>'+
+    '<label class="sm" style="display:flex;gap:6px;align-items:center;margin:0 0 10px"><input type="checkbox" id="mpAuto" checked style="width:auto"> Criar automaticamente fornecedores, equipamentos, matérias-primas, etc. que ainda não existam</label><div id="mpPrev" class="sm"></div>',
     [{l:'Cancelar',fn:()=>closeModal(1)},{l:'Importar',c:'p',fn:r=>doImport(r)}],1);
   const rowsOf=()=>sheets[root.querySelector('#mpS').value]||[];
   const hdr=()=>Math.max(1,+root.querySelector('#mpH').value||1)-1;
-  const build=()=>{ const rows=rowsOf(); const head=(rows[hdr()]||[]).map(norm); const cols=(rows[hdr()]||[]).map((h,i)=>({i,l:h||('Coluna '+(i+1))}));
-    root.querySelector('#mpGrid').innerHTML='<div class="perm" style="font-weight:600"><span>Campo</span><span>Coluna do ficheiro</span></div>'+tg.map(t=>{ const g=guessCol(head,t);
-      return '<div class="perm"><span>'+esc(t.l)+(t.f.req?' <span class="req">*</span>':'')+'</span><select data-map="'+esc(t.k)+'"><option value="">— ignorar —</option>'+cols.map(c=>'<option value="'+c.i+'"'+(c.i===g?' selected':'')+'>'+esc(c.l)+'</option>').join('')+'</select></div>'; }).join('');
-    prev(); };
-  const prev=()=>{ const rows=rowsOf().slice(hdr()+1).filter(r=>r.some(c=>String(c).trim())); root.querySelector('#mpPrev').innerHTML=rows.length+' linha(s) de dados. Primeira: '+esc((rows[0]||[]).slice(0,8).join(' | ')); };
+  const heads=()=>(rowsOf()[hdr()]||[]).map((h,i)=>String(h||'').trim()||('Coluna '+(i+1)));
+  const build=()=>{ const rows=rowsOf(); const H=heads(); const head=H.map(norm); const data=rows.slice(hdr()+1).filter(r=>r.some(c=>String(c).trim()));
+    const guess={}; const used=new Set(); tg.forEach(t=>{ const g=guessCol(head,t); if(g>=0&&!(g in guess)){ guess[g]=t.k; used.add(t.k); } });
+    head.forEach((h,i)=>{ if(guess[i]||!h) return; const t=tg.find(t=>(!t.f.t||t.f.t==='text'||t.f.t==='textarea')&&guessCol([h],t)===0); if(t) guess[i]=t.k; });
+    root.querySelector('#mpGrid').innerHTML='<div class="perm" style="font-weight:600"><span>Coluna do ficheiro (exemplo)</span><span>Importar para</span></div>'+H.map((h,i)=>{ const ex=(data.find(r=>String(r[i]||'').trim())||[])[i]||''; const has=data.some(r=>String(r[i]||'').trim()); const g=guess[i];
+      return '<div class="perm"><span><b>'+esc(h)+'</b><br><span class="mut sm">'+esc(String(ex).slice(0,40))+'</span></span><select data-col="'+i+'"><option value="">— ignorar —</option><option value="__extra"'+(!g&&has?' selected':'')+'>Dado extra «'+esc(h)+'»</option>'+tg.map(t=>'<option value="'+esc(t.k)+'"'+(t.k===g?' selected':'')+'>'+esc(t.l)+(t.f.req?' *':'')+'</option>').join('')+'</select></div>'; }).join('');
+    root.querySelectorAll('[data-col]').forEach(x=>x.onchange=chk); chk(); prev(); };
+  const chk=()=>{ const sel=[...root.querySelectorAll('[data-col]')].map(x=>x.value); const miss=m.f.filter(f=>f.req&&f.t!=='sig'&&!f.def&&!sel.includes(f.k)&&!sel.some(v=>v.startsWith(f.k+'.')));
+    root.querySelector('#mpReq').innerHTML=miss.length?'<div class="alert warn"><i>!</i><span>Campo obrigatório sem coluna: '+esc(miss.map(f=>f.l).join(', '))+'. As linhas sem esse dado não serão importadas.</span></div>':''; };
+  const prev=()=>{ const rows=rowsOf().slice(hdr()+1).filter(r=>r.some(c=>String(c).trim())); root.querySelector('#mpPrev').innerHTML=rows.length+' linha(s) de dados.'; };
   const autoH=()=>{ root.querySelector('#mpH').value=headerRow(rowsOf())+1; };
   root.querySelector('#mpS').onchange=()=>{ autoH(); build(); }; root.querySelector('#mpH').onchange=build; autoH(); build();
   const doImport=r=>{
-    const map={}; r.querySelectorAll('[data-map]').forEach(s=>{ if(s.value!=='') map[s.dataset.map]=+s.value; });
-    if(!Object.keys(map).length){ toast('Escolha pelo menos uma coluna'); return; }
-    const auto=r.querySelector('#mpAuto').checked; const created={}; let n=0,skip=0;
-    rowsOf().slice(hdr()+1).filter(r=>r.some(c=>String(c).trim())).forEach(cells=>{ const rec={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_imp:1}; const lines={};
-      tg.forEach(t=>{ if(!(t.k in map)) return; const v=convVal(t.f,cells[map[t.k]],auto,created); if(v===''||v==null||(Array.isArray(v)&&!v.length)) return;
+    const H=heads(); const cols=[...r.querySelectorAll('[data-col]')].map(x=>({i:+x.dataset.col,k:x.value})).filter(x=>x.k);
+    if(!cols.length){ toast('Escolha pelo menos uma coluna'); return; }
+    const auto=r.querySelector('#mpAuto').checked, upd=r.querySelector('#mpUpd').checked; const created={}; let n=0,u=0,skip=0;
+    const tgBy=Object.fromEntries(tg.map(t=>[t.k,t])); const k0=m.f[0].k; const hasNif=m.f.some(f=>f.k==='nif');
+    rowsOf().slice(hdr()+1).filter(r=>r.some(c=>String(c).trim())).forEach(cells=>{ const rec={}; const lines={}; const extra={};
+      cols.forEach(({i,k})=>{ const raw=String(cells[i]??'').trim(); if(!raw) return;
+        if(k==='__extra'){ extra[H[i]]=raw; return; }
+        const t=tgBy[k]; const v=convVal(t.f,raw,auto,created); if(v===''||v==null||(Array.isArray(v)&&!v.length)) return;
         if(t.line){ (lines[t.line]=lines[t.line]||{id:uid()})[t.k.split('.')[1]]=v; }
         else if(t.k.endsWith('__hora')){ rec._hora=rec._hora||{}; rec._hora[t.k.replace('__hora','')]=v; }
+        else if(rec[t.k]!=null&&rec[t.k]!==''&&(!t.f.t||t.f.t==='text'||t.f.t==='textarea')) rec[t.k]=rec[t.k]+' / '+v;
         else rec[t.k]=v; });
-      if(rec._hora){ Object.entries(rec._hora).forEach(([k,hm])=>{ if(rec[k]) rec[k]=rec[k].slice(0,10)+'T'+hm; }); delete rec._hora; }
-      Object.entries(lines).forEach(([k,l])=>rec[k]=[l]);
+      if(rec._hora){ Object.entries(rec._hora).forEach(([kk,hm])=>{ if(rec[kk]) rec[kk]=rec[kk].slice(0,10)+'T'+hm; }); delete rec._hora; }
+      Object.entries(lines).forEach(([kk,l])=>rec[kk]=[l]);
+      if(Object.keys(extra).length) rec.extra=extra;
+      const ex=upd?D(key).find(x=>(hasNif&&rec.nif&&x.nif&&String(x.nif).replace(/\D/g,'')===String(rec.nif).replace(/\D/g,''))||(rec[k0]&&typeof rec[k0]==='string'&&norm(x[k0])===norm(rec[k0]))):null;
+      if(ex){ const ch=Object.keys(rec).filter(kk=>kk!=='extra'&&JSON.stringify(ex[kk]??'')!==JSON.stringify(rec[kk])); Object.assign(ex,rec,{extra:{...(ex.extra||{}),...(rec.extra||{})}}); if(!Object.keys(ex.extra).length) delete ex.extra;
+        ex._m=nowLocal(); ex._e=CUR?CUR.id:''; if(ch.length) ex._hist=[...(ex._hist||[]),{dt:nowLocal(),u:CUR?CUR.id:'',campos:['Importação: '+ch.join(', ')]}].slice(-60); if(m.compute) m.compute(ex); u++; return; }
+      Object.assign(rec,{id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_imp:1});
       m.f.forEach(x=>{ if(rec[x.k]==null&&x.def&&x.t!=='sig') rec[x.k]=x.def(); });
       if(m.f.filter(x=>x.req&&x.t!=='sig').some(x=>rec[x.k]==null||rec[x.k]===''||(Array.isArray(rec[x.k])&&!rec[x.k].length))){ skip++; return; }
       if(m.compute) m.compute(rec); D(key).push(rec); n++; });
     save(); closeModal(1); render();
-    toast(n+' registo(s) importado(s)'+(skip?' · '+skip+' ignorado(s) por faltarem campos obrigatórios':'')+(Object.keys(created).length?' · criados: '+Object.entries(created).map(([k,c])=>c+' em '+M[k].t).join(', '):''),7000);
+    toast(n+' registo(s) importado(s)'+(u?' · '+u+' atualizado(s)':'')+(skip?' · '+skip+' ignorado(s) por faltarem campos obrigatórios':'')+(Object.keys(created).length?' · criados: '+Object.entries(created).map(([kk,c])=>c+' em '+M[kk].t).join(', '):''),8000);
   };
 }
 
@@ -1869,8 +1905,9 @@ function bindView(key){
 function exportCSV(key){
   const m=M[key]; const cols=m.f.filter(f=>f.t!=='files'&&f.t!=='sig').map(f=>f.k); if(m.compute&&!cols.includes('conforme')) cols.push('conforme');
   const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"'; const un=s=>s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-  const lines=[cols.map(c=>q(colLabel(key,c))).join(';')];
-  sorted(key).forEach(r=>lines.push(cols.map(c=>{ const f=m.f.find(x=>x.k===c); if(f&&f.t==='dyn') return q(un(fmt(key,'resumo',r,true)).replace(/ \(\+\d+\)$/,'')); if(f&&f.t==='lines') return q((r[c]||[]).map(l=>f.cols.map(cc=>cc.t==='ref'?lbl(cc.ref,l[cc.k]):l[cc.k]).filter(Boolean).join(' / ')).join(' | ')); return q(un(fmt(key,c,r,true))); }).join(';')));
+  const xk=[...new Set(D(key).flatMap(r=>Object.keys(r.extra||{})))];
+  const lines=[cols.map(c=>q(colLabel(key,c))).concat(xk.map(q)).join(';')];
+  sorted(key).forEach(r=>lines.push(cols.map(c=>{ const f=m.f.find(x=>x.k===c); if(f&&f.t==='dyn') return q(un(fmt(key,'resumo',r,true)).replace(/ \(\+\d+\)$/,'')); if(f&&f.t==='lines') return q((r[c]||[]).map(l=>f.cols.map(cc=>cc.t==='ref'?lbl(cc.ref,l[cc.k]):l[cc.k]).filter(Boolean).join(' / ')).join(' | ')); return q(un(fmt(key,c,r,true))); }).concat(xk.map(x=>q((r.extra||{})[x]))).join(';')));
   download('﻿'+lines.join('\r\n'),key+'_'+today()+'.csv','text/csv');
 }
 function download(content,name,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(content instanceof Blob?content:new Blob([content],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
