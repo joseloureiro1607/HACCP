@@ -49,6 +49,7 @@ nav .grp a:hover{background:rgba(31,74,61,.10)}
 body.locked .tnav{display:none!important}
 .crumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:13px;color:var(--mut)}
 .crumb .btn{padding:5px 10px;font-size:13px}
+details.help{background:var(--infob);border-color:transparent}details.help summary{cursor:pointer;list-style:none}details.help summary::-webkit-details-marker{display:none}details.help:not([open]){padding:8px 14px}
 .tsync{font-size:12px;background:rgba(255,255,255,.16);border-radius:99px;padding:3px 9px;white-space:nowrap;cursor:pointer}
 .tsync.err{background:#b91c1c}
 pre.sql{white-space:pre-wrap;font-size:11.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:320px;overflow:auto}
@@ -62,6 +63,21 @@ pre.sql{white-space:pre-wrap;font-size:11.5px;background:var(--bg);border:1px so
 .sem.s-ok{background:#22c55e}.sem.s-warn{background:#facc15}.sem.s-bad{background:#ef4444}
 nav a.st-ok{border-left:5px solid #22c55e}nav a.st-warn{border-left:5px solid #eab308}nav a.st-bad{border-left:5px solid #dc2626}
 nav a.on.st-ok,nav a.on.st-warn,nav a.on.st-bad{font-weight:700}
+.qgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:640px){.qgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1000px){.qgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ngrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (min-width:640px){.ngrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:1000px){.ngrid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.ntile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:92px;padding:12px 8px;border-radius:14px;background:#f1f4f3;border:1px solid var(--line);color:var(--ink);text-decoration:none;text-align:center;font:inherit;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s}
+.ntile:hover{background:var(--pri2)}.ntile:active{transform:scale(.97)}
+.ntile.big{min-height:104px;flex-direction:row;justify-content:flex-start;gap:12px;padding:14px 16px;text-align:left}
+.ntile .nic{font-size:28px;line-height:1}.ntile.big .nic{font-size:26px;flex:none}
+.ntile .nl{font-weight:600;font-size:14px;line-height:1.2;min-width:0;overflow-wrap:anywhere}.ntile.big .nl{font-size:15px;padding-right:12px}
+.ntile .nsub{font-size:11px;color:var(--mut)}
+.ntile .sem{left:auto;right:8px}
+.sem.sdot{position:static;display:inline-block;width:11px;height:11px;vertical-align:-1px;margin-left:6px}
+@media (prefers-color-scheme:dark){.ntile{background:#1c2724}}
 .mtile .mbadge{position:absolute;top:6px;right:8px;background:#fff;color:#b91c1c;font-style:normal;font-weight:800;font-size:12px;border-radius:99px;padding:1px 7px}
 @media (min-width:640px){.mtile{min-height:120px}.mtile .mic{font-size:38px}.mtile .ml{font-size:15px}}
 nav .grp h6{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:14px;user-select:none}
@@ -238,7 +254,8 @@ const LIB={
   pdfw:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
   ocr:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
   xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-  docx:'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js'
+  docx:'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js',
+  h2p:'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js'
 };
 let S=load();
 let CUR=null;
@@ -518,7 +535,9 @@ function readDyn(root){ return [...root.querySelectorAll('[data-dyn="valores"] .
 function dynTable(r){ const c=r._campos||dynCampos(r.modelo); const rows=(r.valores||[]); if(!c.length||!rows.length) return '';
   const hasI=rows.some(x=>x.item); return '<table><thead><tr>'+(hasI?'<th></th>':'')+c.map(cc=>'<th>'+esc(cc.nome)+(cc.unidade?' ('+esc(cc.unidade)+')':'')+'</th>').join('')+'</tr></thead><tbody>'+rows.map(x=>'<tr>'+(hasI?'<td><b>'+esc(x.item)+'</b></td>':'')+c.map(cc=>'<td>'+esc((x.v||{})[cc.id]||'')+'</td>').join('')+'</tr>').join('')+'</tbody></table>'; }
 const ING_MODOS=['Proporcional','Fixa','% do ingrediente base'];
-const SUB_MODOS=['% de um ingrediente','% do total de ingredientes','% do produto obtido','Fixa (por receita)'];
+const SP_CATS=['Subproduto animal — Categoria 3','Subproduto animal — Categoria 2','Subproduto animal — Categoria 1','Resíduo não animal — óleo alimentar usado (LER 20 01 25)','Resíduo não animal — outro','Reutilizado internamente (não sai da empresa)'];
+const SP_INFO={'Subproduto animal — Categoria 1':{cor:'#111111',txt:'#fff',rot:'APENAS PARA ELIMINAÇÃO'},'Subproduto animal — Categoria 2':{cor:'#facc15',txt:'#111',rot:'NÃO DESTINADO AO CONSUMO ANIMAL'},'Subproduto animal — Categoria 3':{cor:'#16a3a3',txt:'#fff',rot:'NÃO DESTINADO AO CONSUMO HUMANO'}};
+const SUB_MODOS=['% de um ingrediente','% da receita (total de ingredientes)','% do produto obtido','Fixa (por receita)'];
 /* Calcula as quantidades de uma receita.
    modo 'qtd'  → valor = quantidade final a produzir (na unidade do rendimento)
    modo 'base' → valor = quantidade disponível do ingrediente base
@@ -539,30 +558,41 @@ function recipeCalc(rc,modo,valor){
     return {materia:i.materia,liq:rnd(liq),bruto:rnd(liq*100/ap),aprov:ap}; }).filter(Boolean);
   const prev=num(rc.rendimento)!=null?rnd(+rc.rendimento*fac):null; const totIng=lines.reduce((t,l)=>t+l.liq,0);
   const subs=(rc.subprodutos||[]).filter(x=>x.materia&&num(x.qtd)!=null).map(x=>{ let q; const md=x.modo||'% de um ingrediente';
-    if(md==='% de um ingrediente'){ const l=lines.find(y=>y.materia===x.ref); q=l?l.liq*+x.qtd/100:null; } else if(md==='% do total de ingredientes') q=totIng*+x.qtd/100; else if(md==='% do produto obtido') q=prev!=null?prev*+x.qtd/100:null; else q=+x.qtd*fac;
+    if(md==='% de um ingrediente'){ const l=lines.find(y=>y.materia===x.ref); q=l?l.liq*+x.qtd/100:null; } else if(md==='% do total de ingredientes'||md==='% da receita (total de ingredientes)') q=totIng*+x.qtd/100; else if(md==='% do produto obtido') q=prev!=null?prev*+x.qtd/100:null; else q=+x.qtd*fac;
     return q==null?null:{materia:x.materia,qtd:rnd(q)}; }).filter(Boolean);
   return {fac,prev,lines,avisos,subs};
 }
 function aprovOf(rcId,materia){ const rc=D('receitas').find(x=>x.id===rcId); const i=rc&&(rc.ingredientes||[]).find(x=>x.materia===materia); return i&&num(i.aprov)!=null&&+i.aprov>0?+i.aprov:100; }
 function dispOf(materia,excl){ return rnd(stockLots(excl).filter(l=>l.materia===materia&&l.disp>0&&(!l.validade||l.validade>=today())).reduce((s,l)=>s+l.disp,0)); }
-function fmtLote(pat,p,data,seq){ data=data||today(); const cod=(p&&(p.codigo||p.nome.normalize('NFD').replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase())||'XXX').replace(/\s+/g,'');
-  const d=new Date(data+'T12:00'); const jjj=String(Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)).padStart(3,'0');
-  return String(pat).replace(/\{COD\}/g,cod).replace(/\{AAAA\}/g,data.slice(0,4)).replace(/\{AA\}/g,data.slice(2,4)).replace(/\{A\}/g,data.slice(3,4)).replace(/\{MM\}/g,data.slice(5,7)).replace(/\{DD\}/g,data.slice(8,10)).replace(/\{JJJ\}/g,jjj).replace(/\{SEQ\}/g,String(seq||1).padStart(2,'0')).replace(/\{EMP\}/g,S.empresa.codLote||''); }
-function fmtLoteMP(pat,mat,forn,data,seq){ data=data||today(); const m=D('materias').find(x=>x.id===mat), f=D('fornecedores').find(x=>x.id===forn);
-  const ini=t=>(t||'').normalize('NFD').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase(); const d=new Date(data+'T12:00'); const jjj=String(Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)).padStart(3,'0');
-  return String(pat).replace(/\{MAT\}/g,(m&&(m.codigo||ini(m.nome)))||'MP').replace(/\{FORN\}/g,f?ini(f.nome):'').replace(/\{AAAA\}/g,data.slice(0,4)).replace(/\{AA\}/g,data.slice(2,4)).replace(/\{A\}/g,data.slice(3,4)).replace(/\{MM\}/g,data.slice(5,7)).replace(/\{DD\}/g,data.slice(8,10)).replace(/\{JJJ\}/g,jjj).replace(/\{SEQ\}/g,String(seq||1).padStart(2,'0')).replace(/\{EMP\}/g,S.empresa.codLote||''); }
-function spLote(p,sp,i){ const pat=S.empresa.regraLoteSP||'{LOTE}'; return String(pat).replace(/\{LOTE\}/g,p.lote||'').replace(/\{N\}/g,String((i||0)+1)).replace(/\{AA\}/g,String(p.data||'').slice(2,4)).replace(/\{MM\}/g,String(p.data||'').slice(5,7)).replace(/\{DD\}/g,String(p.data||'').slice(8,10)); }
+/* ---------- Lotes: regras (com interpretação de formatos livres) ---------- */
+const LOTE_TOKS=[['AAAA','{AAAA}'],['YYYY','{AAAA}'],['JJJ','{JJJ}'],['DDD','{JJJ}'],['NNNN','{SEQ4}'],['NNN','{SEQ3}'],['NN','{SEQ2}'],['SEQ','{SEQ}'],['COD','{COD}'],['MAT','{MAT}'],['FORN','{FORN}'],['EMP','{EMP}'],['LOTE','{LOTE}'],['AA','{AA}'],['YY','{AA}'],['MM','{MM}'],['DD','{DD}'],['HH','{HH}']];
+const LOTE_DESC={'{AAAA}':'ano (4 díg.)','{AA}':'ano (2 díg.)','{A}':'ano (1 díg.)','{MM}':'mês','{DD}':'dia','{JJJ}':'dia do ano','{HH}':'hora','{SEQ}':'nº sequencial (2 díg.)','{SEQ2}':'nº sequencial (2 díg.)','{SEQ3}':'nº sequencial (3 díg.)','{SEQ4}':'nº sequencial (4 díg.)','{COD}':'código do artigo','{MAT}':'código da matéria-prima','{FORN}':'código do fornecedor','{EMP}':'código da empresa','{LOTE}':'lote da produção de origem','{N}':'nº do subproduto'};
+function interpLote(pat){ pat=String(pat||''); if(/\{[A-Za-z0-9]+\}/.test(pat)) return pat.replace(/\{([A-Za-z0-9]+)\}/g,(m,t)=>'{'+t.toUpperCase()+'}');
+  let out='',i=0; while(i<pat.length){ const ch=pat[i]; if(ch==='"'||ch==="'"||ch==='«'){ const close=ch==='«'?'»':ch; const j=pat.indexOf(close,i+1); out+=(j<0?pat.slice(i+1):pat.slice(i+1,j)).replace(/[{}]/g,''); i=j<0?pat.length:j+1; continue; }
+    if(/\s/.test(ch)){ i++; continue; } const t=LOTE_TOKS.find(([k])=>pat.substr(i,k.length).toUpperCase()===k); if(t){ out+=t[1]; i+=t[0].length; } else { out+=ch; i++; } } return out; }
+function descLote(pat){ const n=interpLote(pat); const parts=[]; n.replace(/\{[A-Z0-9]+\}|[^{]+/g,m=>{ parts.push(LOTE_DESC[m]||(m.startsWith('{')?m:'«'+m+'»')); return m; }); return parts.join(' + '); }
+const iniCod=t=>(t||'').normalize('NFD').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase();
+const codArt=p=>((p&&(p.codigo||iniCod(p.nome)))||'XXX').replace(/\s+/g,'');
+function loteFmt(pat,c){ const data=c.data||today(); const d=new Date(data+'T12:00'); const jjj=String(Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)).padStart(3,'0'); const seq=c.seq||1;
+  return interpLote(pat).replace(/\{COD\}/g,c.cod||'').replace(/\{MAT\}/g,c.mat||'').replace(/\{FORN\}/g,c.forn||'').replace(/\{EMP\}/g,S.empresa.codLote||'').replace(/\{LOTE\}/g,c.lote||'').replace(/\{N\}/g,String(c.n||1))
+    .replace(/\{AAAA\}/g,data.slice(0,4)).replace(/\{AA\}/g,data.slice(2,4)).replace(/\{A\}/g,data.slice(3,4)).replace(/\{MM\}/g,data.slice(5,7)).replace(/\{DD\}/g,data.slice(8,10)).replace(/\{JJJ\}/g,jjj).replace(/\{HH\}/g,String(new Date().getHours()).padStart(2,'0'))
+    .replace(/\{SEQ(\d)?\}/g,(m,w)=>String(seq).padStart(+(w||2),'0')); }
+function fmtLote(pat,p,data,seq){ return loteFmt(pat,{cod:codArt(p),data,seq}); }
+function fmtLoteMP(pat,mat,forn,data,seq){ const m=D('materias').find(x=>x.id===mat), f=D('fornecedores').find(x=>x.id===forn); return loteFmt(pat,{mat:(m&&(m.codigo||iniCod(m.nome)))||'MP',forn:f?(f.codLote||iniCod(f.nome)):'',data,seq}); }
+function spLote(p,sp,i){ return loteFmt(S.empresa.regraLoteSP||'{LOTE}',{lote:p.lote||'',n:(i||0)+1,data:p.data}); }
 const LOTEMP_MODOS=['Não atribuir (usar o lote do fornecedor)','Só quando a matéria-prima não traz lote','Sempre (lote interno + lote do fornecedor)'];
-function assignLotesMP(r){ const modo=S.empresa.loteMPModo||LOTEMP_MODOS[0]; if(modo===LOTEMP_MODOS[0]) return; const pat=S.empresa.regraLoteMP||'MP{AA}{MM}{DD}-{SEQ}';
+function mpLoteCfg(mat,forn){ const m=D('materias').find(x=>x.id===mat), f=D('fornecedores').find(x=>x.id===forn);
+  const c={modo:S.empresa.loteMPModo||LOTEMP_MODOS[0],regra:S.empresa.regraLoteMP||'MP{AA}{MM}{DD}-{SEQ}',src:'regra geral'};
+  if(f&&LOTEMP_MODOS.includes(f.loteModo)){ c.modo=f.loteModo; c.src='fornecedor'; } if(f&&f.loteRegra){ c.regra=f.loteRegra; }
+  if(m&&LOTEMP_MODOS.includes(m.loteModo)){ c.modo=m.loteModo; c.src='matéria-prima'; } if(m&&m.loteRegra){ c.regra=m.loteRegra; }
+  return c; }
+function assignLotesMP(r){
   const used=new Set(); D('rececao').forEach(x=>(x.linhas||[]).forEach(l=>{ if(l.loteInt) used.add(String(l.loteInt).toLowerCase()); if(l.lote) used.add(String(l.lote).toLowerCase()); }));
-  let seq=D('rececao').filter(x=>x.id!==r.id&&x.data===r.data).reduce((t,x)=>t+(x.linhas||[]).filter(l=>l.loteInt||l._loteGer).length,0);
-  (r.linhas||[]).forEach(l=>{ if(!l.materia) return; const need=modo===LOTEMP_MODOS[2]?!l.loteInt:!l.lote&&!l.loteInt; if(!need) return; let c; do{ c=fmtLoteMP(pat,l.materia,r.fornecedor,r.data,++seq); }while(used.has(c.toLowerCase())&&seq<999); used.add(c.toLowerCase()); l.loteInt=c; if(modo===LOTEMP_MODOS[1]) l._loteGer=1; }); }
+  let seq=D('rececao').filter(x=>x.id!==r.id&&x.data===r.data).reduce((t,x)=>t+(x.linhas||[]).filter(l=>l.loteInt).length,0);
+  (r.linhas||[]).forEach(l=>{ if(!l.materia) return; const c=mpLoteCfg(l.materia,r.fornecedor); if(c.modo===LOTEMP_MODOS[0]) return;
+    const need=c.modo===LOTEMP_MODOS[2]?!l.loteInt:!l.lote&&!l.loteInt; if(!need) return; let x; do{ x=fmtLoteMP(c.regra,l.materia,r.fornecedor,r.data,++seq); }while(used.has(x.toLowerCase())&&seq<9999); used.add(x.toLowerCase()); l.loteInt=x; }); }
 function newLoteCode(prod,data){ const p=D('produtos').find(x=>x.id===prod); if(!p) return ''; data=data||today();
-  const cod=(p.codigo||p.nome.normalize('NFD').replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase()).replace(/\s+/g,'');
-  const d=new Date(data+'T12:00'); const jjj=String(Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)).padStart(3,'0');
-  const seq=D('lotes').filter(x=>x.data===data).length+1;
-  const pat=String(p.regraLote||S.empresa.regraLote||'{COD}{AA}{MM}{DD}');
-  const b=pat.replace(/\{COD\}/g,cod).replace(/\{AAAA\}/g,data.slice(0,4)).replace(/\{AA\}/g,data.slice(2,4)).replace(/\{MM\}/g,data.slice(5,7)).replace(/\{DD\}/g,data.slice(8,10)).replace(/\{JJJ\}/g,jjj).replace(/\{SEQ\}/g,String(seq).padStart(2,'0')).replace(/\{EMP\}/g,S.empresa.codLote||'');
+  const seq=D('lotes').filter(x=>x.data===data).length+1; const b=loteFmt(p.regraLote||S.empresa.regraLote||'{COD}{AA}{MM}{DD}',{cod:codArt(p),data,seq});
   let c=b,n=2; const ex=new Set(D('lotes').map(x=>String(x.lote).toLowerCase())); while(ex.has(c.toLowerCase())) c=b+'-'+(n++); return c; }
 const unidOf=id=>{ const m=D('materias').find(x=>x.id===id); return m&&m.unidade||''; };
 function recipeAllergens(rc){ const s=new Set(); (rc.ingredientes||[]).forEach(i=>{ const m=D('materias').find(x=>x.id===i.materia); (m&&m.alergenos||[]).forEach(a=>s.add(a)); }); return [...s]; }
@@ -603,14 +633,16 @@ const M={
      {k:'validade',l:'Prazo de validade (texto)'},{k:'embalagem',l:'Embalagem'},{k:'rotulagem',l:'Instruções de rotulagem'},
      {k:'uso',l:'Uso pretendido / modo de consumo',t:'textarea'},{k:'consumidores',l:'Consumidores (incl. grupos vulneráveis)',t:'textarea'},
      {k:'variacoes',l:'Variações / apresentações do artigo (mesma receita: ex.: 500 g, 1 kg, inteiro, metade)',t:'lines',cols:[{k:'nome',l:'Variação',big:1},{k:'peso',l:'Peso / conteúdo',t:'number'},{k:'unidade',l:'Unidade',t:'sel',o:UNID,def:'kg'},{k:'codigo',l:'Código / EAN'}]},
-     {k:'regraLote',l:'Regra de lote própria deste artigo (opcional — senão usa a da empresa)'},{k:'docs',l:'Fichas técnicas / rótulos',t:'files'}],
+     {k:'regraLote',l:'Regra de lote própria deste artigo (opcional — ex.: COD-AAMMDD ou {COD}{JJJ}; senão usa a da empresa)'},{k:'docs',l:'Fichas técnicas / rótulos',t:'files'}],
   list:['nome','categoria','conservacao','alergenos']},
  materias:{t:'Matérias-primas e materiais',d:'Matérias-primas, ingredientes, aditivos e embalagens. Associe os códigos de barras para a receção por leitura.',label:r=>r.nome,
-  f:[{k:'nome',l:'Designação',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Matéria-prima','Ingrediente','Aditivo','Material de embalagem','Água','Auxiliar tecnológico']},
+  f:[{k:'nome',l:'Designação',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Matéria-prima','Ingrediente','Aditivo','Material de embalagem','Água','Auxiliar tecnológico','Subproduto / resíduo']},
+     {k:'catSP',l:'Se for subproduto/resíduo: categoria',t:'sel',o:SP_CATS},{k:'recetores',l:'Se for subproduto: recetores possíveis',t:'refm',ref:'recetores'},{k:'recetorPrinc',l:'Se for subproduto: recetor habitual (usado nas guias automáticas)',t:'ref',ref:'recetores'},
      {k:'unidade',l:'Unidade de stock',t:'sel',o:UNID,def:()=>'kg'},{k:'codigo',l:'Código interno / do fornecedor'},
      {k:'ean',l:'Códigos de barras (EAN/GTIN), separados por vírgula',w:1},
      {k:'origem',l:'Origem',t:'sel',o:['Animal','Vegetal','Mineral / água','Química / sintética','Mista']},
      {k:'fornecedor',l:'Fornecedor principal',t:'ref',ref:'fornecedores'},
+     {k:'loteModo',l:'Lote interno na receção (— = usa a regra do fornecedor / geral)',t:'sel',o:()=>LOTEMP_MODOS},{k:'loteRegra',l:'Formato próprio do lote interno (opcional)'},
      {k:'conservacao',l:'Conservação',t:'sel',o:['Ambiente','Refrigerado','Congelado']},
      {k:'tmax',l:'Temp. máx. aceitável na receção (°C)',t:'number'},{k:'stockMin',l:'Stock mínimo',t:'number'},
      {k:'alergenos',l:'Alergénios',t:'multi',o:ALERGENOS},{k:'especificacoes',l:'Especificações / critérios de aceitação',t:'textarea'},{k:'docs',l:'Fichas técnicas / declarações',t:'files'}],
@@ -629,7 +661,7 @@ const M={
      {k:'ingredientes',l:'Ingredientes (quantidade limpa / utilizada, na unidade de stock)',t:'lines',req:1,cols:[{k:'materia',l:'Matéria-prima',t:'ref',ref:'materias',big:1},{k:'qtd',l:'Quantidade',t:'number'},{k:'modo',l:'Cálculo',t:'sel',o:ING_MODOS,def:'Proporcional'},{k:'aprov',l:'Aproveitamento %',t:'number',def:'100'}],
        hint:r=>{ if(!r.materia) return ''; const u=unidOf(r.materia); const ap=num(r.aprov); let t='Unidade: '+(u||'—'); if(r.modo==='% do ingrediente base') t+=' · quantidade em % do ingrediente base'; else if(r.modo==='Fixa') t+=' · igual em qualquer quantidade produzida'; if(ap!=null&&ap>0&&ap<100&&num(r.qtd)!=null&&r.modo!=='% do ingrediente base') t+=' · abate ao stock '+rnd(+r.qtd*100/ap)+' '+u+' (bruto)'; return t; }},
      {k:'subprodutos',l:'Subprodutos (ex.: soro, aparas, farelo) — opcional',t:'lines',cols:[{k:'materia',l:'Subproduto',t:'ref',ref:'materias',big:1},{k:'modo',l:'Cálculo',t:'sel',o:SUB_MODOS,def:'% de um ingrediente'},{k:'ref',l:'Ingrediente de referência',t:'ref',ref:'materias'},{k:'qtd',l:'Quantidade / %',t:'number'}],
-       hint:r=>r.materia?(r.modo==='% de um ingrediente'?'Percentagem sobre o ingrediente de referência':r.modo==='% do total de ingredientes'?'Percentagem sobre a soma dos ingredientes':r.modo==='% do produto obtido'?'Percentagem sobre a quantidade produzida':'Quantidade por receita')+' · unidade: '+unidOf(r.materia):''},
+       hint:r=>r.materia?(r.modo==='% de um ingrediente'?'Percentagem sobre o ingrediente de referência':/total de ingredientes/.test(r.modo||'')?'Percentagem sobre o total da receita (soma dos ingredientes)':r.modo==='% do produto obtido'?'Percentagem sobre a quantidade produzida':'Quantidade por receita')+' · unidade: '+unidOf(r.materia):''},
      {k:'modo',l:'Modo de preparação / parâmetros',t:'textarea'}],
   list:['nome','produto','tipoReceita','rendimento','ningr','alerg'],
   validate:r=>{ const ing=(r.ingredientes||[]).filter(i=>i.materia);
@@ -643,7 +675,7 @@ const M={
   f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'fornecedor',l:'Fornecedor',t:'ref',ref:'fornecedores',req:1},{k:'documento',l:'Nº fatura / guia'},
      {k:'tveiculo',l:'Temp. da caixa do veículo (°C)',t:'number'},{k:'transporte',l:'Condições do transporte',t:'sel',o:CONF,def:()=>'Conforme'},{k:'documentacao',l:'Documentação / rotulagem',t:'sel',o:CONF,def:()=>'Conforme'},
      {k:'linhas',l:'Produtos recebidos',t:'lines',cols:[{k:'materia',l:'Produto',t:'ref',ref:'materias',big:1},{k:'lote',l:'Lote do fornecedor'},{k:'loteInt',l:'Lote interno'},{k:'validade',l:'Validade',t:'date'},{k:'qtd',l:'Quantidade',t:'number'},{k:'temp',l:'Temp. °C',t:'number'},{k:'estado',l:'Estado',t:'sel',o:['Conforme','Não conforme','Rejeitado'],def:'Conforme'}],
-       hint:r=>{ const m=D('materias').find(x=>x.id===r.materia); const md=S.empresa.loteMPModo||LOTEMP_MODOS[0]; return m?('Unidade: '+(m.unidade||'—')+(num(m.tmax)!=null?' · temp. máx. '+m.tmax+' °C':'')+(md===LOTEMP_MODOS[2]&&!r.loteInt?' · o lote interno é atribuído ao guardar':md===LOTEMP_MODOS[1]&&!r.lote&&!r.loteInt?' · sem lote do fornecedor: é atribuído um lote interno ao guardar':'')):''; }},
+       hint:r=>{ const m=D('materias').find(x=>x.id===r.materia); const md=mpLoteCfg(r.materia,'').modo; return m?('Unidade: '+(m.unidade||'—')+(num(m.tmax)!=null?' · temp. máx. '+m.tmax+' °C':'')+(md===LOTEMP_MODOS[2]&&!r.loteInt?' · o lote interno é atribuído ao guardar':md===LOTEMP_MODOS[1]&&!r.lote&&!r.loteInt?' · sem lote do fornecedor: é atribuído um lote interno ao guardar':'')):''; }},
      {k:'decisao',l:'Decisão',t:'sel',o:['Aceite','Aceite condicionalmente','Rejeitado'],def:()=>'Aceite'},{k:'responsavel',l:'Responsável',def:getUser},{k:'obs',l:'Observações',t:'textarea'},
      {k:'docs',l:'Fatura / guia / documentos',t:'files'}],
   list:['data','fornecedor','documento','prods','conforme','decisao'],
@@ -684,7 +716,8 @@ const M={
   virt:{consumo:{l:'Stock',fn:r=>(r.falta&&r.falta.length)?'<span class="bd warn">Faltou stock</span>':(r.consumos&&r.consumos.length?'<span class="bd ok">Abatido</span>':'')},
         quantidade:{l:'Quantidade',fn:r=>num(r.quantidade)!=null?esc(r.quantidade+' '+(unidRec(r.receita)||'')):''},
         rend:{l:'Real / previsto',fn:r=>num(r.qtdReal)!=null&&num(r.quantidade)?Math.round(100*r.qtdReal/r.quantidade)+'%':''}},
-  extra:r=>(r.consumos&&r.consumos.length)?'<div class="card sm"><b>Consumos registados</b><br>'+r.consumos.map(c=>esc(lbl('materias',c.materia))+': lote '+esc(c.lote)+' — '+c.qtd+' '+esc(unidOf(c.materia))).join('<br>')+(r.falta&&r.falta.length?'<br><span style="color:var(--bad)">Sem stock suficiente: '+esc(r.falta.join('; '))+'</span>':'')+'</div>':'',
+  extra:r=>{ const rs=D('residuos').filter(x=>String(x._src||'').startsWith('lotes:'+r.id+':')); return (rs.length?'<div class="card sm"><b>Subprodutos registados automaticamente</b><br>'+rs.map(x=>esc(lbl('materias',x.materia)||x.tipo)+': '+esc(x.quantidade)+' '+esc(x.unidade||'')+' · '+esc(x.estadoSP||'')+(x.guia?' · guia '+esc(x.guia):'')).join('<br>')+'</div>':'')+lotesExtra(r); },
+  _x:r=>(r.consumos&&r.consumos.length)?'<div class="card sm"><b>Consumos registados</b><br>'+r.consumos.map(c=>esc(lbl('materias',c.materia))+': lote '+esc(c.lote)+' — '+c.qtd+' '+esc(unidOf(c.materia))).join('<br>')+(r.falta&&r.falta.length?'<br><span style="color:var(--bad)">Sem stock suficiente: '+esc(r.falta.join('; '))+'</span>':'')+'</div>':'',
   init:root=>{ lotesToggle(root); lotSelects(root); },
   onChange:(root,el)=>{
     const g=k=>root.querySelector('[name="'+k+'"]');
@@ -699,12 +732,15 @@ const M={
       if(p && num(p.vidaUtil)!=null && !g('validade').value) g('validade').value=addDays(g('data').value||today(),p.vidaUtil); }
     if(el.name==='receita'){ const rc=D('receitas').find(x=>x.id===el.value); if(rc){ if(!g('quantidade').value) g('quantidade').value=rc.rendimento; if(!g('produto').value&&rc.produto){ g('produto').value=rc.produto; M.lotes.onChange(root,g('produto')); } } }
     if(el.name==='receita'){ const rc=D('receitas').find(x=>x.id===el.value); if(rc){ const mc=/^Fixa/.test(rc.tipoReceita||'')?'Nº de vezes a receita':/^Pelo ingrediente/.test(rc.tipoReceita||'')?'Pelo ingrediente base':'Pela quantidade a produzir'; g('modoCalc').value=mc; if(mc==='Nº de vezes a receita'&&!g('vezes').value) g('vezes').value='1'; } }
+    if(el.dataset&&el.dataset.c==='materia'&&el.closest('[data-lines="subprod"]')){ const mm=D('materias').find(x=>x.id===el.value); const ds=el.closest('.lrow').querySelector('[data-c="destino"]'); if(mm&&ds&&mm.catSP) ds.value=/^Subproduto animal/.test(mm.catSP)?'Subproduto animal (Reg. 1069/2009)':/^Resíduo/.test(mm.catSP)?'Resíduo':'Stock (reutilizar)'; }
     if(el.name==='produto'){ const p=D('produtos').find(x=>x.id===el.value); const box=root.querySelector('[data-lines="saidas"]'); const f=M.lotes.f.find(x=>x.k==='saidas'); const filled=[...box.querySelectorAll('[data-c="unidades"],[data-c="peso"]')].some(x=>x.value);
       if(p&&(p.variacoes||[]).length&&!filled) box.innerHTML=p.variacoes.filter(v=>v.nome).map(v=>lineRow(f,{variacao:v.nome})).join(''); }
     if(el.name==='receita'){ const rc=D('receitas').find(x=>x.id===el.value); if(rc&&rc.mostrarCalc) g('mostrarCalc').value=rc.mostrarCalc==='Não'?'Não — o operador escreve as quantidades':'Sim'; }
     if(['receita','quantidade','qtdBase','modoCalc','produto','vezes','mostrarCalc'].includes(el.name)){ lotesToggle(root); lotesRecalc(root,el.name); }
   },
+  after:r=>{ syncSPResiduos(r); },
   compute:r=>{
+    if(r.receita&&!(r.subprod||[]).some(x=>x.materia)){ const sp=subsFromProd(D('receitas').find(x=>x.id===r.receita),r); if(sp.length) r.subprod=sp; }
     const sig=[JSON.stringify(r.ingr||[]),JSON.stringify(r.subprod||[]),r.receita,r.quantidade,r.abater,r.data].join('|');
     if(r._sig===sig && r.consumos) return; r._sig=sig;
     r.consumos=[]; r.falta=[];
@@ -725,7 +761,8 @@ const M={
   f:[{k:'nome',l:'Fornecedor',req:1},{k:'nif',l:'NIF'},{k:'morada',l:'Morada'},{k:'codPostal',l:'Código postal'},{k:'localidade',l:'Localidade'},{k:'pessoa',l:'Pessoa de contacto'},{k:'contacto',l:'Telefone / contacto'},{k:'email',l:'Email'},{k:'site',l:'Website'},{k:'fornece',l:'Produtos fornecidos',t:'textarea'},
      {k:'certificacao',l:'Certificação / nº de controlo veterinário'},{k:'avaliacao',l:'Data da última avaliação',t:'date'},
      {k:'classificacao',l:'Classificação',t:'sel',o:['A - Aprovado','B - Aprovado c/ condições','C - Não aprovado','Em avaliação']},
-     {k:'proxima',l:'Próxima avaliação',t:'date'},{k:'obs',l:'Observações',t:'textarea'},{k:'docs',l:'Fichas técnicas, certificados e questionários',t:'files'}],
+     {k:'proxima',l:'Próxima avaliação',t:'date'},{k:'codLote',l:'Código para lotes (FORN)'},{k:'loteModo',l:'Lote interno na receção (— = usa a regra geral)',t:'sel',o:()=>LOTEMP_MODOS},{k:'loteRegra',l:'Formato próprio do lote interno (opcional)'},
+     {k:'obs',l:'Observações',t:'textarea'},{k:'docs',l:'Fichas técnicas, certificados e questionários',t:'files'}],
   list:['nome','nif','contacto','fornece','classificacao','proxima']},
  clientes:{t:'Clientes',d:'Clientes e destinos dos produtos — usados nas expedições e na rastreabilidade para a frente.',label:r=>r.nome,
   f:[{k:'nome',l:'Cliente',req:1},{k:'nif',l:'NIF'},{k:'tipo',l:'Tipo',t:'sel',o:['Distribuidor','Retalho / loja','Restauração','Indústria','Consumidor final','Exportação','Outro']},{k:'morada',l:'Morada'},{k:'codPostal',l:'Código postal'},{k:'localidade',l:'Localidade'},
@@ -828,7 +865,7 @@ const M={
   nc:r=>r.conforme==='Não conforme'?lbl('modelos',r.modelo)+(r.lote?' ('+r.lote+')':'')+': '+r._prob:null,
   virt:{resumo:{l:'Valores',fn:r=>{ const c=r._campos||[]; const out=[]; (r.valores||[]).forEach(row=>c.forEach(cc=>{ const v=(row.v||{})[cc.id]; if(v!=null&&v!=='') out.push((row.item?row.item+' · ':'')+cc.nome+': '+v+(cc.unidade&&cc.tipo==='Número'?' '+cc.unidade:'')); })); return esc(out.slice(0,3).join(' | ')+(out.length>3?' (+'+(out.length-3)+')':'')); }}}},
  documentos:{t:'Documentos e legislação',d:'Procedimentos, fichas técnicas e de segurança, certificados, legislação.',label:r=>r.titulo,
-  f:[{k:'titulo',l:'Título',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Procedimento','Instrução de trabalho','Impresso / registo','Ficha técnica','Ficha de segurança','Legislação','Certificado','Outro']},
+  f:[{k:'titulo',l:'Título',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Plano HACCP / plano','Procedimento','Instrução de trabalho','Impresso / registo','Ficha técnica','Ficha de segurança','Legislação','Certificado','Outro']},
      {k:'codigo',l:'Código / versão'},{k:'data',l:'Data',t:'date'},{k:'revisao',l:'Próxima revisão',t:'date'},{k:'link',l:'Link / localização',w:1},{k:'obs',l:'Notas',t:'textarea'},{k:'docs',l:'Ficheiros',t:'files'}],
   list:['titulo','tipo','codigo','revisao']},
 
@@ -960,10 +997,34 @@ const M={
      {k:'assinatura',l:'Assinatura do visitante',t:'sig',papel:'Recebido por',nomeDe:'nome'}],
   list:['dt','nome','empresa','motivo','saude']},
  residuos:{t:'Resíduos e subprodutos',d:'Registo de saída de resíduos e subprodutos (ex.: SPOA cat. 3, óleos usados), com guia ou e-GAR.',label:r=>fDate(r.data)+' '+(r.tipo||''),sort:'data',
-  f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'tipo',l:'Tipo',t:'sel',o:['Subproduto animal (categoria 3)','Óleos alimentares usados','Resíduos orgânicos','Embalagens','Soro de queijaria','Outro'],req:1},
+  f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'tipo',l:'Tipo',t:'sel',o:['Subproduto animal (categoria 3)','Subproduto animal (categoria 2)','Subproduto animal (categoria 1)','Óleos alimentares usados','Resíduos orgânicos','Embalagens','Soro de queijaria','Outro'],req:1},
+     {k:'materia',l:'Subproduto / resíduo',t:'ref',ref:'materias'},{k:'lote',l:'Lote de produção de origem'},
      {k:'quantidade',l:'Quantidade',t:'number'},{k:'unidade',l:'Unidade',t:'sel',o:UNID,def:()=>'kg'},{k:'destino',l:'Operador / destino'},{k:'guia',l:'Nº guia / e-GAR'},
+     {k:'estadoSP',l:'Estado',t:'sel',o:['Em armazenagem','Expedido'],def:()=>'Em armazenagem'},
      {k:'responsavel',l:'Responsável',def:getUser},{k:'docs',l:'Guia / comprovativo',t:'files'}],
-  list:['data','tipo','quantidade','destino','guia']},
+  list:['data','tipo','materia','lote','quantidade','estadoSP','guia'],
+  tools:'<div class="tools noprint"><button type="button" class="btn p" data-tool="guiaSP">Emitir guia de acompanhamento</button></div>'},
+ recetores:{t:'Recetores de subprodutos',d:'Empresas que recebem os subprodutos e resíduos (queijarias de requeijão, unidades de transformação, biogás, recolha de óleos…). Atribua a cada subproduto o(s) seu(s) recetor(es): as guias passam a ser preenchidas sozinhas.',label:r=>r.nome,
+  f:[{k:'nome',l:'Recetor (destinatário)',req:1},{k:'nif',l:'NIF'},{k:'morada',l:'Morada',w:1},{k:'aprovacao',l:'Nº de aprovação / registo (DGAV, APA…)'},
+     {k:'categorias',l:'Categorias que recebe',t:'multi',o:SP_CATS},{k:'finalidade',l:'Finalidade / tratamento (ex.: fabrico de requeijão, alimentação animal, biogás, valorização de óleos)'},
+     {k:'transportador',l:'Transportador — nome e morada (se não for o próprio recetor)',w:1},{k:'transpReg',l:'Nº de registo do transportador'},{k:'matricula',l:'Matrícula habitual'},
+     {k:'contacto',l:'Telefone'},{k:'email',l:'Email (para enviar as guias)'},{k:'obs',l:'Observações',t:'textarea'}],
+  list:['nome','aprovacao','categorias','email']},
+ guiasSP:{t:'Guias de subprodutos',d:'Guia de acompanhamento de subprodutos animais (documento comercial — Reg. (UE) 142/2011, anexo VIII, cap. III; modelo DGAV 376/DGV). Para óleos alimentares usados e outros resíduos não animais registe o nº da e-GAR (APA/SILiAmb). Imprime 3 vias.',label:r=>(r.numero||'')+' '+fDate(r.data),sort:'data',
+  f:[{k:'numero',l:'Nº da guia',req:1,def:()=>nextGuia()},{k:'estadoG',l:'Estado da guia',t:'sel',o:['Rascunho','Emitida','Expedida'],def:()=>'Emitida'},{k:'data',l:'Data de saída',t:'date',req:1,def:today},{k:'categoria',l:'Categoria',t:'sel',o:SP_CATS,req:1},
+     {k:'recetor',l:'Recetor (preenche destinatário e transportador)',t:'ref',ref:'recetores'},
+     {k:'material',l:'Descrição do material (ex.: soro de leite, aparas de carne de bovino)',req:1,w:1},{k:'especie',l:'Espécie animal de origem (categoria 3)'},
+     {k:'quantidade',l:'Quantidade',t:'number',req:1},{k:'unidade',l:'Unidade',t:'sel',o:UNID,def:()=>'kg'},{k:'embalagens',l:'Nº de embalagens / contentores'},
+     {k:'lotes',l:'Lotes de origem (opcional)'},{k:'residuos',l:'Saídas incluídas nesta guia',t:'refm',ref:'residuos'},
+     {k:'transportador',l:'Transportador — nome e morada',w:1},{k:'transpReg',l:'Nº de registo do transportador (DGAV)'},{k:'matricula',l:'Matrícula do veículo'},
+     {k:'destinatario',l:'Destinatário — nome e morada',w:1},{k:'destAprov',l:'Nº de aprovação / registo do destinatário'},{k:'finalidade',l:'Finalidade / tratamento previsto (ex.: alimentação animal, biogás, compostagem, eliminação)'},
+     {k:'egar',l:'Nº e-GAR (resíduos não animais, ex.: óleos usados)'},{k:'temp',l:'Temperatura no transporte (°C, se refrigerado)',t:'number'},
+     {k:'sigExp',l:'Expedidor (assinatura)',t:'sig',papel:'Entregue por'},{k:'sigTr',l:'Transportador (assinatura)',t:'sig',papel:'Recebido por'}],
+  list:['numero','estadoG','data','categoria','material','quantidade','destinatario'],
+  onChange:(root,el)=>{ if(el.name!=='recetor') return; const rc=D('recetores').find(x=>x.id===el.value); if(!rc) return; const g=k=>root.querySelector('[name="'+k+'"]'); const v=guiaFromRecetor(rc); Object.entries(v).forEach(([k,x])=>{ if(g(k)&&x) g(k).value=x; }); },
+  validate:r=>{ if(r.estadoG!=='Rascunho'&&/^Subproduto animal/.test(r.categoria||'')&&(!r.transportador||!r.destinatario)) return 'Indique o transportador e o destinatário (obrigatórios no documento comercial).'; if(D('guiasSP').some(x=>x.id!==r.id&&x.numero===r.numero)) return 'Já existe uma guia com este número.'; return null; },
+  after:r=>{ (r.residuos||[]).forEach(id=>{ const x=D('residuos').find(y=>y.id===id); if(x){ x.guia=r.egar||r.numero; if(r.estadoG==='Expedida') x.estadoSP='Expedido'; x.destino=r.destinatario||x.destino; x._m=nowLocal(); } }); },
+  tools:'<div class="tools noprint"><button type="button" class="btn" data-tool="printGuia">Imprimir guia (3 vias)</button><button type="button" class="btn" data-tool="mailGuia">Enviar por email</button><span class="sm mut" style="align-self:center">Guarde as vias 2 anos (Reg. (CE) 1069/2009).</span></div>'},
  auditorias:{t:'Auditorias e verificação',d:'Auditorias internas/externas, inspeções e verificação/revisão do sistema HACCP.',label:r=>fDate(r.data)+' '+(r.tipo||''),sort:'data',
   f:[{k:'data',l:'Data',t:'date',req:1,def:today},{k:'tipo',l:'Tipo',t:'sel',o:['Auditoria interna','Auditoria externa / cliente','Inspeção oficial','Autoavaliação ASAE / DGAV','Verificação do sistema HACCP','Revisão pela gestão']},
      {k:'entidade',l:'Auditor / entidade'},{k:'resultado',l:'Resultado',t:'sel',o:['Sem constatações','Com observações','Com não conformidades']},
@@ -1004,7 +1065,7 @@ const NAV=[
  ['Empresa',['equipa','produtos','materias','clientes','etapas']],
  ['Produção e stock',[['codLotes','Definições de lotes'],'rececao','receitas','lotes','expedicoes',['stock','Stock'],'ajustes']],
  ['Registos diários',['temperaturas','higRegisto','controlos','pccRegisto','registos']],
- ['Pré-requisitos',['fornecedores','equipamentos','manutencao','higPlano','pragas','planoAnalises','paramControlo','vidros','residuos']],
+ ['Pré-requisitos',['fornecedores','equipamentos','manutencao','higPlano','pragas','planoAnalises','paramControlo','vidros','residuos','guiasSP','recetores']],
  ['Pessoas',['colaboradores','formacao','epiEntregas','epis','visitantes']],
  ['Documentos',['documentos',['arquivo','Arquivo — todos os documentos'],'modelos',['importar','Importar documentos e dados']]],
  ['Controlo',[['inspecao','Preparar inspeção (ASAE/DGAV)'],'analises','nc','reclamacoes','retiradas','auditorias','verificacoes',['rastreio','Rastreabilidade']]],
@@ -1033,17 +1094,18 @@ const HIST=[]; let goingBack=false;
 function navInfo(k){ for(const [g,items] of NAV) for(const it of items){ const [kk,l]=Array.isArray(it)?it:[it,M[it]?M[it].t:it]; if(kk===k) return {g,l}; } return {g:'',l:M[k]?M[k].t:k}; }
 function goBack(){ closeModal(2); closeModal(1); if(HIST.length>1){ HIST.pop(); goingBack=true; location.hash='#/'+HIST[HIST.length-1]; } else location.hash='#/'+homeRoute(); }
 function tabletMode(){ let pref=''; try{ pref=localStorage.getItem('haccp_ui')||''; }catch(e){} if(!pref) pref=S.empresa.uiDefault||''; if(pref==='botoes') return true; if(pref==='lista') return false; return window.matchMedia('(max-width: 1100px)').matches||window.matchMedia('(pointer: coarse)').matches; }
-function homeRoute(){ return tabletMode()?'menu':'painel'; }
+function homeRoute(){ return 'painel'; }
 function goHome(){ closeModal(2); closeModal(1); document.getElementById('nav').classList.remove('open'); location.hash='#/'+homeRoute(); }
 const GRP_STYLE={'Início':['#0f6b57','#16a085','🏠'],'Empresa':['#1d4ed8','#3b82f6','🏢'],'Produção e stock':['#c2410c','#f97316','🏭'],'Registos diários':['#0e7490','#06b6d4','📝'],'Pré-requisitos':['#7c3aed','#a78bfa','🧰'],'Pessoas':['#be185d','#ec4899','👥'],'Documentos':['#92400e','#d97706','📁'],'Controlo':['#b91c1c','#ef4444','🛡️'],'HACCP':['#15803d','#22c55e','✅'],'Administração':['#374151','#6b7280','⚙️']};
-const ICON={codLotes:'🏷️',aparencia:'🎨',sync:'☁️',painel:'📊',assistente:'🧭',empresa:'🏢',regularidade:'⏰',equipa:'👥',produtos:'🧀',materias:'🧂',clientes:'🤝',etapas:'🔀',rececao:'🚚',receitas:'📖',lotes:'🏭',expedicoes:'📦',stock:'📈',ajustes:'↕️',temperaturas:'🌡️',higRegisto:'🧽',controlos:'🔬',pccRegisto:'🎯',registos:'📝',fornecedores:'🏷️',equipamentos:'❄️',manutencao:'🔧',higPlano:'🧼',pragas:'🐭',planoAnalises:'🧪',paramControlo:'📏',vidros:'🔍',residuos:'♻️',colaboradores:'👤',formacao:'🎓',epiEntregas:'🧤',epis:'🦺',visitantes:'🚪',documentos:'📄',arquivo:'🗂️',modelos:'📋',importar:'📥',inspecao:'🔎',analises:'🧫',nc:'⚠️',reclamacoes:'📣',retiradas:'↩️',auditorias:'✔️',verificacoes:'✍️',rastreio:'🔗',analise:'☣️',alergenios:'🥜',vulnerabilidade:'🔐',objetivos:'🎯',plano:'🖨️',utilizadores:'🔑',dados:'💾'};
+const ICON={recetores:'🏭',guiasSP:'🚛',codLotes:'🏷️',aparencia:'🎨',sync:'☁️',painel:'📊',assistente:'🧭',empresa:'🏢',regularidade:'⏰',equipa:'👥',produtos:'🧀',materias:'🧂',clientes:'🤝',etapas:'🔀',rececao:'🚚',receitas:'📖',lotes:'🏭',expedicoes:'📦',stock:'📈',ajustes:'↕️',temperaturas:'🌡️',higRegisto:'🧽',controlos:'🔬',pccRegisto:'🎯',registos:'📝',fornecedores:'🏷️',equipamentos:'❄️',manutencao:'🔧',higPlano:'🧼',pragas:'🐭',planoAnalises:'🧪',paramControlo:'📏',vidros:'🔍',residuos:'♻️',colaboradores:'👤',formacao:'🎓',epiEntregas:'🧤',epis:'🦺',visitantes:'🚪',documentos:'📄',arquivo:'🗂️',modelos:'📋',importar:'📥',inspecao:'🔎',analises:'🧫',nc:'⚠️',reclamacoes:'📣',retiradas:'↩️',auditorias:'✔️',verificacoes:'✍️',rastreio:'🔗',analise:'☣️',alergenios:'🥜',vulnerabilidade:'🔐',objetivos:'🎯',plano:'🖨️',utilizadores:'🔑',dados:'💾'};
 function viewMenu(){ const grp=decodeURIComponent((location.hash.split('/')[2]||'')); const tk=todayTasks(); const falta=tk.filter(x=>!x.done).length; const ncA=D('nc').filter(n=>n.estado!=='Fechada').length;
   const cnt=k=>{ if(k==='painel') return falta?'<i class="mbadge">'+falta+'</i>':''; if(k==='nc') return ncA?'<i class="mbadge">'+ncA+'</i>':''; return ''; };
-  STMAP=statusMap(); const tile=(href,ic,l,c1,c2,extra,sem)=>'<a class="mtile" href="'+href+'" style="background:linear-gradient(135deg,'+c1+','+c2+')">'+(sem?'<i class="sem s-'+sem+'"></i>':'')+'<span class="mic">'+ic+'</span><span class="ml">'+esc(l)+'</span>'+(extra||'')+'</a>';
+  STMAP=statusMap(); const tile=(href,ic,l,c1,c2,extra,sem)=>'<a class="ntile" href="'+href+'">'+(sem?'<i class="sem s-'+sem+'"></i>':'')+'<span class="nic">'+ic+'</span><span class="nl">'+esc(l)+'</span>'+(extra||'')+'</a>';
+  if(!grp){ setTimeout(()=>{ location.hash='#/painel'; },0); return ''; }
   const groups=NAV.map(([g,items])=>[g,items.map(it=>Array.isArray(it)?it:[it,M[it].t]).filter(([k])=>lvl(k)>=1)]).filter(([g,its])=>its.length);
   let h='';
   if(grp){ const G=groups.find(([g])=>g===grp); if(!G){ location.hash='#/menu'; return ''; } const [c1,c2,ic]=GRP_STYLE[grp]||['#334155','#64748b','📁'];
-    h+='<h1>'+ic+' '+esc(grp)+'</h1><div class="mgrid">'+G[1].map(([k,l])=>tile('#/'+k,ICON[k]||'•',l,c1,c2,cnt(k),semOf(k))).join('')+'</div>'; }
+    h+='<h1>'+ic+' '+esc(grp)+'</h1><div class="ngrid">'+G[1].map(([k,l])=>tile('#/'+k,ICON[k]||'•',l,c1,c2,cnt(k),semOf(k))).join('')+'</div>'; }
   else { h+='<h1>Menu</h1><p class="sub">'+esc(S.empresa.nome||'')+(falta?' · '+falta+' tarefa(s) por fazer hoje':' · tarefas de hoje em dia')+'</p>';
     const quick=[['painel','Painel'],['temperaturas','Temperaturas'],['registos','Outros registos'],['rececao','Receção'],['lotes','Produção'],['nc','Não conformidades']].filter(([k])=>lvl(k)>=1);
     h+='<p class="sm mut" style="margin:-6px 0 10px"><i class="sem s-ok" style="position:static;display:inline-block"></i> em dia · <i class="sem s-warn" style="position:static;display:inline-block"></i> a aproximar-se / por fazer · <i class="sem s-bad" style="position:static;display:inline-block"></i> em atraso</p>';
@@ -1051,33 +1113,46 @@ function viewMenu(){ const grp=decodeURIComponent((location.hash.split('/')[2]||
     h+='<div class="mgrid">'+groups.filter(([g])=>g!=='Início').concat(groups.filter(([g])=>g==='Início')).map(([g,its])=>{ const [c1,c2,ic]=GRP_STYLE[g]||['#334155','#64748b','📁']; return tile('#/menu/'+encodeURIComponent(g),ic,g,c1,c2,'<small class="msub">'+its.length+' opções</small>',semGroup(its.map(x=>x[0]))); }).join('')+'</div>'; }
   if(!grp) h+='<div class="row" style="margin-top:18px"><span class="sm mut sp">Aparência do menu neste dispositivo:</span><button class="btn s" data-ui="botoes">Botões</button><button class="btn s" data-ui="lista">Lista lateral</button><button class="btn s" data-ui="">Automático</button></div>';
   return h; }
-const LOTE_TOK=[['{COD}','Código do artigo'],['{AAAA}','Ano (2026)'],['{AA}','Ano (26)'],['{A}','Ano (6)'],['{MM}','Mês'],['{DD}','Dia'],['{JJJ}','Dia do ano (001–366)'],['{SEQ}','Nº da produção no dia (01, 02…)'],['{EMP}','Código da empresa']];
-function viewCodLotes(){ const ed=lvl('codLotes')>=3; const pat=S.empresa.regraLote||''; const ps=sorted('produtos');
-  const mm=S.empresa.loteMPModo||LOTEMP_MODOS[0];
-  return '<h1>Definições de lotes</h1><p class="sub">Como a empresa atribui os lotes — aplica-se automaticamente na receção, na produção, nos subprodutos, no stock e na rastreabilidade. Os lotes nunca se repetem e podem sempre ser alterados à mão.</p>'+
-   '<div class="card"><b>1. Lotes de produção (produto acabado)</b> <span class="sm mut">— regra da empresa</span><div class="grid" style="margin-top:8px"><label class="f wide"><span>Regra (combine os códigos abaixo com letras, números, «-» ou «/»)</span><input id="clR" value="'+esc(pat)+'" placeholder="{COD}{AA}{MM}{DD}"'+(ed?'':' disabled')+'></label><label class="f"><span>Código da empresa ({EMP})</span><input id="clE" value="'+esc(S.empresa.codLote||'')+'"'+(ed?'':' disabled')+'></label></div>'+
-   (ed?'<div class="row" style="margin:6px 0 10px">'+LOTE_TOK.map(([t,l])=>'<button type="button" class="btn s" data-tok="'+t+'" title="'+esc(l)+'">'+t+'</button>').join('')+'<button type="button" class="btn s" data-tok="-">-</button><button type="button" class="btn s" data-clr>Limpar</button></div>':'')+
-   '<div class="sm mut">'+LOTE_TOK.map(([t,l])=>'<b>'+t+'</b> '+esc(l)).join(' · ')+'</div>'+
-   '<p style="margin:10px 0 0">Exemplo hoje: <b id="clEx"></b></p><div class="row sm" style="margin-top:6px">Sugestões: '+['{COD}{AA}{MM}{DD}','{COD}{JJJ}{AA}','L{AA}{JJJ}-{SEQ}','{EMP}{COD}{AAAA}{MM}{DD}{SEQ}'].map(x=>'<button type="button" class="btn s" data-sug="'+x+'">'+x+'</button>').join('')+'</div></div>'+
-   '<div class="card"><b>Por artigo</b><p class="sm mut" style="margin:4px 0 8px">O código do artigo entra no lado de {COD}. Se um artigo precisar de um formato diferente, escreva a regra própria.</p>'+
-   (ps.length?'<div class="tw"><table><thead><tr><th>Artigo</th><th>Código ({COD})</th><th>Regra própria (opcional)</th><th>Exemplo</th></tr></thead><tbody>'+ps.map(p=>'<tr data-p="'+p.id+'"><td>'+esc(p.nome)+'</td><td><input data-pc value="'+esc(p.codigo||'')+'" style="max-width:110px"'+(ed?'':' disabled')+'></td><td><input data-pr value="'+esc(p.regraLote||'')+'" placeholder="usa a da empresa"'+(ed?'':' disabled')+'></td><td><b data-px></b></td></tr>').join('')+'</tbody></table></div>':'<p class="mut sm">Ainda não há artigos. <a href="#/produtos">Criar produtos</a></p>')+'</div>'+
-   '<div class="card"><b>2. Lotes das matérias-primas (na receção)</b><p class="sm mut" style="margin:4px 0 8px">Por defeito usa-se o lote do fornecedor. Pode atribuir um lote interno — útil quando o fornecedor não indica lote, para granéis (ex.: leite de vários produtores) ou para ter uma codificação única no armazém.</p>'+
-   '<label class="f"><span>Atribuir lote interno</span><select id="clMM"'+(ed?'':' disabled')+'>'+LOTEMP_MODOS.map(o=>'<option'+(o===mm?' selected':'')+'>'+o+'</option>').join('')+'</select></label>'+
-   '<label class="f" style="margin-top:8px"><span>Regra do lote interno — {MAT} código da matéria-prima, {FORN} fornecedor (3 letras), {AA}{MM}{DD}{JJJ} data da receção, {SEQ} nº no dia, {EMP} empresa</span><input id="clRM" value="'+esc(S.empresa.regraLoteMP||'MP{AA}{MM}{DD}-{SEQ}')+'"'+(ed?'':' disabled')+'></label><p class="sm">Exemplo: <b id="clExM"></b></p></div>'+
-   '<div class="card"><b>3. Lotes dos subprodutos</b> <span class="sm mut">(ex.: soro que volta ao stock)</span><label class="f" style="margin-top:8px"><span>Regra — {LOTE} lote da produção de origem, {N} nº do subproduto, {AA}{MM}{DD} data</span><input id="clRS" value="'+esc(S.empresa.regraLoteSP||'{LOTE}')+'"'+(ed?'':' disabled')+'></label><p class="sm">Exemplo: <b id="clExS"></b></p></div>'+
+const LOTE_TOK=[['{COD}','Código do artigo'],['{AAAA}','Ano (2026)'],['{AA}','Ano (26)'],['{MM}','Mês'],['{DD}','Dia'],['{JJJ}','Dia do ano'],['{SEQ}','Nº no dia (01)'],['{SEQ3}','Nº no dia (001)'],['{EMP}','Código da empresa']];
+function viewCodLotes(){ const ed=lvl('codLotes')>=3; const dis=ed?'':' disabled'; const pat=S.empresa.regraLote||''; const ps=sorted('produtos'), fs=sorted('fornecedores'), ms=sorted('materias');
+  const mm=S.empresa.loteMPModo||LOTEMP_MODOS[0]; const msel=(attr,v,first)=>'<select '+attr+dis+'><option value="">'+first+'</option>'+LOTEMP_MODOS.map(o=>'<option'+(o===v?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+  return '<h1>Definições de lotes</h1><p class="sub">Como a empresa atribui os lotes — aplica-se automaticamente na receção, na produção, nos subprodutos, no stock e na rastreabilidade. Pode definir uma regra geral e regras diferentes artigo a artigo ou por fornecedor. Os lotes nunca se repetem e podem sempre ser alterados à mão.</p>'+
+   '<div class="card sm"><b>Escreva a regra à sua maneira.</b> Pode usar os códigos entre chavetas ({AA}, {JJJ}…) ou escrever livremente, por exemplo <b>AAMMDD</b>, <b>DDMMAA-NNN</b>, <b>L JJJ AA</b>, <b>COD-AAAA-NNNN</b>. A app mostra como interpretou. Letras que não sejam códigos ficam tal e qual e os espaços são ignorados; para forçar texto fixo (ou espaços) use aspas, ex.: <b>"LOTE"AAMMDD</b>.<br><span class="mut">Códigos reconhecidos: AAAA/YYYY ano · AA/YY ano · MM mês · DD dia · JJJ/DDD dia do ano · NN, NNN, NNNN nº sequencial · COD artigo · MAT matéria-prima · FORN fornecedor · EMP empresa · LOTE lote de origem.</span></div>'+
+   '<div class="card"><b>1. Lotes de produção (produto acabado)</b><div class="grid" style="margin-top:8px"><label class="f wide"><span>Regra geral da empresa</span><input id="clR" value="'+esc(pat)+'" placeholder="{COD}{AA}{MM}{DD}"'+dis+'></label><label class="f"><span>Código da empresa (EMP)</span><input id="clE" value="'+esc(S.empresa.codLote||'')+'"'+dis+'></label></div>'+
+   (ed?'<div class="row" style="margin:6px 0 4px">'+LOTE_TOK.map(([t,l])=>'<button type="button" class="btn s" data-tok="'+t+'" title="'+esc(l)+'">'+t+'</button>').join('')+'<button type="button" class="btn s" data-tok="-">-</button><button type="button" class="btn s" data-clr>Limpar</button></div>':'')+
+   '<p class="sm" style="margin:6px 0 0">Interpretação: <span id="clIn" class="mut"></span><br>Exemplo hoje: <b id="clEx"></b></p><div class="row sm" style="margin-top:6px">Sugestões: '+['{COD}{AA}{MM}{DD}','{COD}{JJJ}{AA}','L{AA}{JJJ}-{SEQ}','DDMMAA-NNN'].map(x=>'<button type="button" class="btn s" data-sug="'+x+'">'+x+'</button>').join('')+'</div>'+
+   '<h3 style="margin:14px 0 6px">Artigo a artigo</h3><p class="sm mut" style="margin:0 0 8px">Código do artigo (COD) e, se precisar, uma regra própria só para esse artigo.</p>'+
+   (ps.length?'<div class="tw"><table><thead><tr><th>Artigo</th><th>Código</th><th>Regra própria</th><th>Exemplo</th></tr></thead><tbody>'+ps.map(p=>'<tr data-p="'+p.id+'"><td>'+esc(p.nome)+'</td><td><input data-pc value="'+esc(p.codigo||'')+'" style="max-width:100px"'+dis+'></td><td><input data-pr value="'+esc(p.regraLote||'')+'" placeholder="usa a geral"'+dis+'></td><td><b data-px></b></td></tr>').join('')+'</tbody></table></div>':'<p class="mut sm">Ainda não há artigos. <a href="#/produtos">Criar produtos</a></p>')+'</div>'+
+   '<div class="card"><b>2. Lotes das matérias-primas (na receção)</b><p class="sm mut" style="margin:4px 0 8px">Por defeito usa-se o lote do fornecedor. Pode atribuir lote interno a tudo, só a alguns fornecedores ou só a algumas matérias-primas. Prioridade: <b>matéria-prima</b> › <b>fornecedor</b> › <b>regra geral</b>.</p>'+
+   '<div class="grid"><label class="f"><span>Regra geral — atribuir lote interno</span><select id="clMM"'+dis+'>'+LOTEMP_MODOS.map(o=>'<option'+(o===mm?' selected':'')+'>'+o+'</option>').join('')+'</select></label><label class="f"><span>Regra geral — formato do lote interno</span><input id="clRM" value="'+esc(S.empresa.regraLoteMP||'MP{AA}{MM}{DD}-{SEQ}')+'"'+dis+'></label></div>'+
+   '<p class="sm" style="margin:6px 0 0">Interpretação: <span id="clInM" class="mut"></span><br>Exemplo: <b id="clExM"></b></p>'+
+   '<h3 style="margin:14px 0 6px">Por fornecedor</h3>'+(fs.length?'<div class="tw"><table><thead><tr><th>Fornecedor</th><th>Código (FORN)</th><th>Lote interno</th><th>Formato próprio</th></tr></thead><tbody>'+fs.map(f=>'<tr data-f="'+f.id+'"><td>'+esc(f.nome)+'</td><td><input data-fc value="'+esc(f.codLote||'')+'" placeholder="'+esc(iniCod(f.nome))+'" style="max-width:90px"'+dis+'></td><td>'+msel('data-fm',f.loteModo,'Usar a regra geral')+'</td><td><input data-fr value="'+esc(f.loteRegra||'')+'" placeholder="usa o geral"'+dis+'></td></tr>').join('')+'</tbody></table></div>':'<p class="mut sm">Sem fornecedores.</p>')+
+   '<h3 style="margin:14px 0 6px">Por matéria-prima</h3>'+(ms.length?'<div class="tw"><table><thead><tr><th>Matéria-prima</th><th>Código (MAT)</th><th>Lote interno</th><th>Formato próprio</th><th>Resultado</th></tr></thead><tbody>'+ms.map(m=>'<tr data-m="'+m.id+'"><td>'+esc(m.nome)+'<br><span class="sm mut">'+esc(lbl('fornecedores',m.fornecedor))+'</span></td><td><input data-mc value="'+esc(m.codigo||'')+'" placeholder="'+esc(iniCod(m.nome))+'" style="max-width:90px"'+dis+'></td><td>'+msel('data-mm',m.loteModo,'Usar a do fornecedor / geral')+'</td><td><input data-mr value="'+esc(m.loteRegra||'')+'" placeholder="usa o do fornecedor / geral"'+dis+'></td><td class="sm" data-mx></td></tr>').join('')+'</tbody></table></div>':'<p class="mut sm">Sem matérias-primas.</p>')+'</div>'+
+   '<div class="card"><b>3. Lotes dos subprodutos</b> <span class="sm mut">(ex.: soro que volta ao stock)</span><label class="f" style="margin-top:8px"><span>Formato — LOTE é o lote da produção de origem, {N} o nº do subproduto</span><input id="clRS" value="'+esc(S.empresa.regraLoteSP||'{LOTE}')+'"'+dis+'></label><p class="sm">Interpretação: <span id="clInS" class="mut"></span> · Exemplo: <b id="clExS"></b></p></div>'+
    (ed?'<div class="row"><span class="sp"></span><button class="btn p" id="clSave">Guardar definições</button></div>':''); }
-function bindCodLotes(){ const R=document.getElementById('clR'), E=document.getElementById('clE'); if(!R) return;
-  const prev=()=>{ const keep=S.empresa.codLote; S.empresa.codLote=E.value.trim(); const ex=D('produtos')[0];
-    const m0=D('materias')[0], f0=D('fornecedores')[0]; const exm=document.getElementById('clExM'); if(exm) exm.textContent=document.getElementById('clMM').value===LOTEMP_MODOS[0]?'— (usa o lote do fornecedor)':fmtLoteMP(document.getElementById('clRM').value||'MP{AA}{MM}{DD}-{SEQ}',m0&&m0.id,f0&&f0.id,today(),1)+(m0?' («'+m0.nome+'»)':'');
-    const kSP=S.empresa.regraLoteSP; const rs=document.getElementById('clRS'); if(rs) S.empresa.regraLoteSP=rs.value||'{LOTE}'; const exs=document.getElementById('clExS'); if(exs) exs.textContent=spLote({lote:fmtLote(R.value||'{COD}{AA}{MM}{DD}',ex,today(),1),data:today()},{},0).replace(/^$/,'(mesmo lote da produção)'); S.empresa.regraLoteSP=kSP; document.getElementById('clEx').textContent=fmtLote(R.value||'{COD}{AA}{MM}{DD}',ex,today(),1)+(ex?' (artigo «'+ex.nome+'»)':'');
-    document.querySelectorAll('tr[data-p]').forEach(tr=>{ const p={...D('produtos').find(x=>x.id===tr.dataset.p)}; p.codigo=tr.querySelector('[data-pc]').value.trim(); const pr=tr.querySelector('[data-pr]').value.trim(); tr.querySelector('[data-px]').textContent=fmtLote(pr||R.value||'{COD}{AA}{MM}{DD}',p,today(),1); }); S.empresa.codLote=keep; };
-  document.querySelectorAll('#view input').forEach(i=>i.oninput=prev); const mmS=document.getElementById('clMM'); if(mmS) mmS.onchange=prev;
+function bindCodLotes(){ const R=document.getElementById('clR'), E=document.getElementById('clE'); if(!R) return; const v=id=>document.getElementById(id).value;
+  const withTmp=(fn)=>{ const bk={codLote:S.empresa.codLote,loteMPModo:S.empresa.loteMPModo,regraLoteMP:S.empresa.regraLoteMP,regraLoteSP:S.empresa.regraLoteSP};
+    const fb=D('fornecedores').map(f=>[f,f.codLote,f.loteModo,f.loteRegra]), mb=D('materias').map(m=>[m,m.codigo,m.loteModo,m.loteRegra]);
+    S.empresa.codLote=E.value.trim(); S.empresa.loteMPModo=v('clMM'); S.empresa.regraLoteMP=v('clRM'); S.empresa.regraLoteSP=v('clRS')||'{LOTE}';
+    document.querySelectorAll('tr[data-f]').forEach(tr=>{ const f=D('fornecedores').find(x=>x.id===tr.dataset.f); f.codLote=tr.querySelector('[data-fc]').value.trim(); f.loteModo=tr.querySelector('[data-fm]').value; f.loteRegra=tr.querySelector('[data-fr]').value.trim(); });
+    document.querySelectorAll('tr[data-m]').forEach(tr=>{ const m=D('materias').find(x=>x.id===tr.dataset.m); m.codigo=tr.querySelector('[data-mc]').value.trim(); m.loteModo=tr.querySelector('[data-mm]').value; m.loteRegra=tr.querySelector('[data-mr]').value.trim(); });
+    try{ fn(); } finally{ Object.assign(S.empresa,bk); fb.forEach(([f,a,b,c])=>{ f.codLote=a; f.loteModo=b; f.loteRegra=c; }); mb.forEach(([m,a,b,c])=>{ m.codigo=a; m.loteModo=b; m.loteRegra=c; }); } };
+  const prev=()=>withTmp(()=>{ const ex=D('produtos')[0]; const g=R.value||'{COD}{AA}{MM}{DD}';
+    document.getElementById('clIn').textContent=descLote(g); document.getElementById('clEx').textContent=fmtLote(g,ex,today(),1)+(ex?' (artigo «'+ex.nome+'»)':'');
+    document.querySelectorAll('tr[data-p]').forEach(tr=>{ const p={...D('produtos').find(x=>x.id===tr.dataset.p)}; p.codigo=tr.querySelector('[data-pc]').value.trim(); const pr=tr.querySelector('[data-pr]').value.trim(); tr.querySelector('[data-px]').textContent=fmtLote(pr||g,p,today(),1); });
+    const m0=D('materias')[0], f0=D('fornecedores')[0]; document.getElementById('clInM').textContent=descLote(v('clRM')); document.getElementById('clExM').textContent=v('clMM')===LOTEMP_MODOS[0]?'— (regra geral: usa o lote do fornecedor)':fmtLoteMP(v('clRM')||'MP{AA}{MM}{DD}-{SEQ}',m0&&m0.id,f0&&f0.id,today(),1);
+    document.querySelectorAll('tr[data-m]').forEach(tr=>{ const m=D('materias').find(x=>x.id===tr.dataset.m); const c=mpLoteCfg(m.id,m.fornecedor); tr.querySelector('[data-mx]').innerHTML=c.modo===LOTEMP_MODOS[0]?'<span class="mut">lote do fornecedor</span>':'<b>'+esc(fmtLoteMP(c.regra,m.id,m.fornecedor,today(),1))+'</b><br><span class="mut">'+(c.modo===LOTEMP_MODOS[1]?'só sem lote':'sempre')+' · '+c.src+'</span>'; });
+    document.getElementById('clInS').textContent=descLote(v('clRS')||'{LOTE}'); document.getElementById('clExS').textContent=spLote({lote:fmtLote(g,ex,today(),1),data:today()},{},0); });
+  document.querySelectorAll('#view input').forEach(i=>i.oninput=prev); document.querySelectorAll('#view select').forEach(i=>i.onchange=prev);
   document.querySelectorAll('[data-tok]').forEach(b=>b.onclick=()=>{ const st=R.selectionStart??R.value.length, en=R.selectionEnd??R.value.length; R.value=R.value.slice(0,st)+b.dataset.tok+R.value.slice(en); R.focus(); R.selectionStart=R.selectionEnd=st+b.dataset.tok.length; prev(); });
   document.querySelectorAll('[data-sug]').forEach(b=>b.onclick=()=>{ R.value=b.dataset.sug; prev(); });
   const cl=document.querySelector('[data-clr]'); if(cl) cl.onclick=()=>{ R.value=''; prev(); };
-  const sv=document.getElementById('clSave'); if(sv) sv.onclick=()=>{ if(R.value&&!/\{(COD|SEQ|DD|JJJ)\}/.test(R.value)&&!confirm('A regra não tem código do artigo, dia nem sequência — os lotes podem repetir-se (a app acrescenta -2, -3…). Guardar na mesma?')) return;
-    S.empresa.regraLote=R.value.trim(); S.empresa.codLote=E.value.trim(); S.empresa.loteMPModo=document.getElementById('clMM').value; S.empresa.regraLoteMP=document.getElementById('clRM').value.trim(); S.empresa.regraLoteSP=document.getElementById('clRS').value.trim()||'{LOTE}'; S.empresa._m=nowLocal();
-    document.querySelectorAll('tr[data-p]').forEach(tr=>{ const p=D('produtos').find(x=>x.id===tr.dataset.p); const c=tr.querySelector('[data-pc]').value.trim(), r=tr.querySelector('[data-pr]').value.trim(); if(p&&(p.codigo||'')!==c||p&&(p.regraLote||'')!==r){ p.codigo=c; p.regraLote=r; p._m=nowLocal(); } });
+  const sv=document.getElementById('clSave'); if(sv) sv.onclick=()=>{ const n=interpLote(R.value); if(R.value&&!/\{(COD|SEQ\d?|DD|JJJ)\}/.test(n)&&!confirm('A regra não tem código do artigo, dia nem nº sequencial — os lotes podem repetir-se (a app acrescenta -2, -3…). Guardar na mesma?')) return;
+    S.empresa.regraLote=R.value.trim(); S.empresa.codLote=E.value.trim(); S.empresa.loteMPModo=v('clMM'); S.empresa.regraLoteMP=v('clRM').trim(); S.empresa.regraLoteSP=v('clRS').trim()||'{LOTE}'; S.empresa._m=nowLocal();
+    const upd=(rec,o)=>{ if(Object.entries(o).some(([k,x])=>(rec[k]||'')!==x)){ Object.assign(rec,o); rec._m=nowLocal(); } };
+    document.querySelectorAll('tr[data-p]').forEach(tr=>{ const p=D('produtos').find(x=>x.id===tr.dataset.p); if(p) upd(p,{codigo:tr.querySelector('[data-pc]').value.trim(),regraLote:tr.querySelector('[data-pr]').value.trim()}); });
+    document.querySelectorAll('tr[data-f]').forEach(tr=>{ const f=D('fornecedores').find(x=>x.id===tr.dataset.f); if(f) upd(f,{codLote:tr.querySelector('[data-fc]').value.trim(),loteModo:tr.querySelector('[data-fm]').value,loteRegra:tr.querySelector('[data-fr]').value.trim()}); });
+    document.querySelectorAll('tr[data-m]').forEach(tr=>{ const m=D('materias').find(x=>x.id===tr.dataset.m); if(m) upd(m,{codigo:tr.querySelector('[data-mc]').value.trim(),loteModo:tr.querySelector('[data-mm]').value,loteRegra:tr.querySelector('[data-mr]').value.trim()}); });
     save(); toast('Definições de lotes guardadas'); render(); };
   prev(); }
 const THEMES={'Verde (predefinido)':{pri:'#0f5c4d',top:'#0f5c4d',pri2:'#e3f0ec'},'Azul':{pri:'#1d4ed8',top:'#1e3a8a',pri2:'#e0e7ff'},'Bordeaux':{pri:'#9f1239',top:'#881337',pri2:'#ffe4e6'},'Laranja':{pri:'#c2410c',top:'#9a3412',pri2:'#ffedd5'},'Cinzento':{pri:'#374151',top:'#1f2937',pri2:'#e5e7eb'},'Roxo':{pri:'#6d28d9',top:'#4c1d95',pri2:'#ede9fe'},'Castanho':{pri:'#7c4a1e',top:'#5b3413',pri2:'#f3e8dc'}};
@@ -1112,10 +1187,10 @@ function render(){
   const route=location.hash.slice(2)||k; if(!goingBack&&HIST[HIST.length-1]!==route) HIST.push(route); goingBack=false; if(HIST.length>50) HIST.splice(0,HIST.length-50);
   document.getElementById('tBack').disabled=(k==='painel'||k==='menu')&&HIST.length<2;
   const ni=k==='menu'?{g:'',l:'Menu'}:navInfo(k);
-  const crumb=(k==='painel'&&!tabletMode())||(k==='menu'&&!location.hash.split('/')[2])?'':'<div class="crumb noprint"><button class="btn" data-crumb="back">&#8592; Voltar</button><button class="btn" data-crumb="home">&#8962; Início</button><span>'+esc(ni.g)+(ni.g?' › ':'')+'<b>'+esc(ni.l)+'</b></span></div>';
-  if(views[k]) v.innerHTML=crumb+views[k]()+pageDocsHTML(k); else v.innerHTML=crumb+viewList(k);
+  const crumb=k==='painel'||(k==='menu'&&!location.hash.split('/')[2])?'':'<div class="crumb noprint"><button class="btn" data-crumb="back">&#8592; Voltar</button><button class="btn" data-crumb="home">&#8962; Início</button><span>'+esc(ni.g)+(ni.g?' › ':'')+'<b>'+esc(ni.l)+'</b></span></div>';
+  if(views[k]) v.innerHTML=crumb+helpHTML(k)+views[k]()+pageDocsHTML(k); else v.innerHTML=crumb+helpHTML(k)+viewList(k);
   v.querySelectorAll('[data-crumb]').forEach(b=>b.onclick=b.dataset.crumb==='back'?goBack:goHome);
-  bindView(k); pageDocsBind(k); window.scrollTo(0,0);
+  bindView(k); pageDocsBind(k); helpBind(); window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',render);
 
@@ -1167,6 +1242,7 @@ function viewList(key){
   h+='<div class="row noprint" style="margin-bottom:12px">'+(L>=2?'<button class="btn p" data-act="new">+ Novo</button>':'');
   if(key==='rececao'&&L>=2) h+='<button class="btn" data-act="newscan">Nova receção por leitura</button>';
   if(key==='lotes'&&L>=2) h+='<button class="btn p" data-act="proddia">Produção do dia (várias receitas)</button>';
+  if(key==='residuos'&&L>=2&&lvl('guiasSP')>=2) h+='<button class="btn p" data-act="guiaMulti">Emitir guia para saídas em armazenagem</button>';
   if(GEN[key]&&L>=2) h+='<button class="btn" data-act="gen">Modelos genéricos</button>';
   if(key==='modelos'&&L>=2) h+='<button class="btn p" data-act="modlib">Modelos do sector</button><button class="btn" data-act="modimp">Importar modelo da empresa</button>';
   if(key==='registos'&&L>=2&&!D('modelos').length) h+='<a class="btn" href="#/modelos">Criar modelos de registo</a>';
@@ -1266,6 +1342,7 @@ function openForm(key,id,preset){
   const btns=[];
   if(ex&&L>=3) btns.push({l:'Eliminar',c:'d',fn:()=>deleteRecord(key,id)});
   if(ex) btns.push({l:'Imprimir',fn:()=>printRecord(key,ex)});
+  if(ex) btns.push({l:'✉ Enviar',fn:()=>key==='guiasSP'?shareDoc({html:guiaHTML(ex),name:'Guia '+String(ex.numero).replace(/\//g,'-')+'.pdf',subject:'Guia de acompanhamento '+ex.numero+' — '+(S.empresa.nome||''),to:recordEmailTo(key,ex)}):shareDoc({html:recordHTML(key,ex),name:(M[key].t+' '+(M[key].label(ex)||'')).replace(/[\\/:*?"<>|]+/g,'-').slice(0,80)+'.pdf',subject:M[key].t+' — '+(M[key].label(ex)||'')+' — '+(S.empresa.nome||''),to:recordEmailTo(key,ex)})});
   if(ex&&L>=2) btns.push({l:'Duplicar',fn:()=>{ closeModal(1); const c=JSON.parse(JSON.stringify(ex)); ['id','_nc','consumos','falta','_sig','_autoMP','docs','anexos','assinaturas','_u','_e','_m','_c','_imp','_hist','lote'].forEach(k=>delete c[k]); if(key==='lotes'&&c.produto) c.lote=newLoteCode(c.produto,today()); (c.ingr||[]).forEach(l=>l.id=uid()); (c.campos||[]).forEach(l=>l.id=uid()); m.f.forEach(f=>{ if(f.t==='sig') delete c[f.k]; }); (c.linhas||[]).forEach(l=>l.id=uid()); (c.ingredientes||[]).forEach(l=>l.id=uid()); (c.itens||[]).forEach(l=>l.id=uid()); m.f.forEach(f=>{ if(f.def&&(f.t==='date'||f.t==='dt')) c[f.k]=f.def(); }); openForm(key,null,c); }});
   btns.push({l:canSave?'Cancelar':'Fechar',fn:()=>closeModal(1)});
   if(canSave) btns.push({l:'Guardar',c:'p',fn:async root=>{
@@ -1317,6 +1394,9 @@ function openForm(key,id,preset){
             box.querySelectorAll('.lrow').forEach(rw=>{ if(![...rw.querySelectorAll('[data-c]')].some(el=>el.value)) rw.remove(); });
             let n=0; sel.forEach(nm=>CHECKLISTS[nm].filter(t=>!have.includes(t)).forEach(t=>{ box.insertAdjacentHTML('beforeend',lineRow(f,{req:t})); have.push(t); n++; }));
             closeModal(2); toast(n+' requisito(s) carregado(s): marque cada um'); }}],2); }
+      else if(tool.dataset.tool==='guiaSP'){ const v=readForm(root,m.f); const cur=id?D(key).find(x=>x.id===id):null; if(!cur){ toast('Guarde primeiro o registo e depois emita a guia'); return; } closeModal(1); openGuiaFrom([cur.id]); }
+      else if(tool.dataset.tool==='mailGuia'){ const v=readForm(root,m.f); const g={...rec,...v,sigExp:root._sig.sigExp,sigTr:root._sig.sigTr}; const rc=D('recetores').find(x=>x.id===g.recetor); shareDoc({html:guiaHTML(g),name:'Guia '+String(g.numero).replace(/\//g,'-')+'.pdf',subject:'Guia de acompanhamento '+g.numero+' — '+(S.empresa.nome||''),to:rc&&rc.email||''}); }
+      else if(tool.dataset.tool==='printGuia'){ const v=readForm(root,m.f); printGuia({...rec,...v,sigExp:root._sig.sigExp,sigTr:root._sig.sigTr}); }
       else if(tool.dataset.tool==='sugTarefas'){ const t=root.querySelector('[name="tarefasManut"]'); const v=readForm(root,m.f); if(t.value&&!confirm('Substituir o texto atual pelas tarefas sugeridas?')) return; t.value=defaultTarefas(v); if(!root.querySelector('[name="tipoInterv"]').value) root.querySelector('[name="tipoInterv"]').value=/Instrumento/.test(v.tipo||'')?'Calibração':'Manutenção preventiva'; toast('Tarefas sugeridas — ajuste ao equipamento'); }
       else if(tool.dataset.tool==='blank'){ const v=readForm(root,m.f); printBlankModelo({...rec,...v}); }
       else importDoc(root); return; }
@@ -1379,7 +1459,7 @@ function lotesRecalc(root,origin){ const g=k=>root.querySelector('[name="'+k+'"]
   const hide=/^Não/.test(g('mostrarCalc').value);
   box.innerHTML=c.lines.map(l=>lineRow(f,hide?{materia:l.materia}:{materia:l.materia,liq:l.liq,bruto:l.bruto})).join('')||lineRow(f);
   lotSelects(root); lotHints(root);
-  const sf=M.lotes.f.find(x=>x.k==='subprod'); const sb=root.querySelector('[data-lines="subprod"]'); if(sb&&c.subs.length) sb.innerHTML=c.subs.map(x=>lineRow(sf,{materia:x.materia,qtd:x.qtd})).join('');
+  const sf=M.lotes.f.find(x=>x.k==='subprod'); const sb=root.querySelector('[data-lines="subprod"]'); if(sb&&c.subs.length) sb.innerHTML=c.subs.map(x=>{ const mm=D('materias').find(y=>y.id===x.materia)||{}; return lineRow(sf,{materia:x.materia,qtd:x.qtd,destino:/^Subproduto animal/.test(mm.catSP||'')?'Subproduto animal (Reg. 1069/2009)':/^Resíduo/.test(mm.catSP||'')?'Resíduo':'Stock (reutilizar)'}); }).join('');
   if(c.avisos.length) toast(c.avisos.join('; '),6000); }
 function prodDia(){
   if(lvl('lotes')<2){ toast('Sem permissão para registar produção'); return; }
@@ -1406,7 +1486,7 @@ function prodDia(){
       const rec={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',data,produto:x.rc.produto,receita:x.rc.id,modoCalc:'Pela quantidade a produzir',quantidade:x.v,
         ingr:x.c.lines.map(l=>({id:uid(),materia:l.materia,liq:String(l.liq),bruto:String(l.bruto)})),subprod:(x.c.subs||[]).map(y=>({id:uid(),materia:y.materia,qtd:String(y.qtd),destino:'Stock (reutilizar)'})),lote:newLoteCode(x.rc.produto,data),validade:p&&num(p.vidaUtil)!=null?addDays(data,p.vidaUtil):'',
         abater:'Sim',estadoLote:'Libertado',responsavel:resp,assinaturas:[]};
-      M.lotes.compute(rec); D('lotes').push(rec); criados.push(rec.lote); falta.push(...rec.falta); });
+      M.lotes.compute(rec); D('lotes').push(rec); syncSPResiduos(rec); criados.push(rec.lote); falta.push(...rec.falta); });
     if(resp) setUser(resp); save(); closeModal(1); render();
     toast(criados.length+' lote(s) criado(s): '+criados.join(', ')+(falta.length?' — ATENÇÃO stock insuficiente: '+falta.join('; '):''),8000); }}],1);
   root.addEventListener('input',()=>{ const {tot,err}=calc(root); const el=root.querySelector('#pdNeed'); const ks=Object.keys(tot);
@@ -1523,9 +1603,10 @@ async function importModelo(file){
   toast('Impresso lido: '+mod.campos.length+' campo(s)'+(mod.itens?' e '+mod.itens.split('\n').length+' linha(s)':'')+'. Confirme, ajuste e guarde.',7000);
 }
 function quickFiles(key,id){ const r=D(key).find(x=>x.id===id); if(!r) return; const fs=recFiles(key,r);
-  const root=modal('Documentos — '+M[key].label(r),fs.map((a,i)=>'<div class="file"><a data-of="'+i+'">'+esc(a.name)+'</a><span class="mut">'+(a.size?Math.round(a.size/1024)+' KB':'')+'</span></div>').join('')||'<p class="mut">Sem documentos.</p>',
+  const root=modal('Documentos — '+M[key].label(r),fs.map((a,i)=>'<div class="file"><a data-of="'+i+'">'+esc(a.name)+'</a><span class="mut">'+(a.size?Math.round(a.size/1024)+' KB':'')+'</span><button class="btn s" data-sf="'+i+'">✉ Enviar</button></div>').join('')||'<p class="mut">Sem documentos.</p>',
     [{l:'Abrir registo',fn:()=>{ closeModal(1); openForm(key,id); }},{l:'Fechar',c:'p',fn:()=>closeModal(1)}],1);
-  root.querySelectorAll('[data-of]').forEach(a=>a.onclick=async()=>{ const x=fs[+a.dataset.of]; openBlob(await FDB.get(x.id).catch(()=>null),x.name); }); }
+  root.querySelectorAll('[data-of]').forEach(a=>a.onclick=async()=>{ const x=fs[+a.dataset.of]; openBlob(await FDB.get(x.id).catch(()=>null),x.name); });
+  root.querySelectorAll('[data-sf]').forEach(b=>b.onclick=async()=>{ const x=fs[+b.dataset.sf]; const bl=await FDB.get(x.id).catch(()=>null); if(!bl){ toast('Anexo não encontrado neste dispositivo'); return; } shareDoc({file:new File([bl],x.name,{type:bl.type||x.type||'application/octet-stream'}),name:x.name,subject:x.name+' — '+M[key].label(r),to:recordEmailTo(key,r)}); }); }
 const PAGE_DOCS={analise:1,plano:1,stock:1,rastreio:1,alergenios:1,inspecao:1,empresa:1,assistente:1};
 function pageDocsHTML(k){ if(!PAGE_DOCS[k]) return ''; S.pageDocs=S.pageDocs||{}; const pd=S.pageDocs[k]||{anexos:[],assinaturas:[]}; const can=lvl(k)>=2;
   return '<div class="card noprint" id="pgDocs" style="margin-top:18px"><b>Documentos e assinaturas desta página</b><p class="sm mut" style="margin:4px 0 8px">Anexe versões aprovadas, relatórios, fotos ou outros documentos e assine (ex.: aprovação do plano HACCP).</p>'+
@@ -1545,13 +1626,14 @@ function viewArquivo(){
   const menus=[...new Set(all.map(x=>x.menu))].sort();
   return '<h1>Arquivo de documentos</h1><p class="sub">Todos os documentos anexados em qualquer menu: fichas técnicas, certificados, faturas, boletins, relatórios, fotos. Para anexar, abra o registo (ex.: o fornecedor) e use «Documentos anexos».</p>'+
    '<div class="row noprint" style="margin-bottom:12px"><input type="search" id="aq" placeholder="Pesquisar ficheiro, fornecedor, produto…" style="max-width:280px"><select id="am" style="max-width:240px"><option value="">Todos os menus</option>'+menus.map(m=>'<option>'+esc(m)+'</option>').join('')+'</select><span class="sp"></span><span class="mut sm">'+all.length+' documento(s)</span></div>'+
-   (all.length?'<div class="tw"><table><thead><tr><th>Data</th><th>Menu</th><th>Registo</th><th>Documento</th><th></th></tr></thead><tbody>'+all.map((x,i)=>'<tr data-arq="'+i+'" data-menu="'+esc(x.menu)+'"><td>'+fDate(x.d)+'</td><td>'+esc(x.menu)+'</td><td>'+esc(x.reg)+'</td><td><a data-ao="'+i+'">'+esc(x.name)+'</a> <span class="mut sm">'+(x.size?Math.round(x.size/1024)+' KB':'')+'</span></td><td>'+(x.id?'<button class="btn s" data-ar="'+i+'">Registo</button>':'<a class="btn s" href="#/'+x.k+'">Página</a>')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="card empty">Ainda não há documentos anexados.</div>'); }
+   (all.length?'<div class="tw"><table><thead><tr><th>Data</th><th>Menu</th><th>Registo</th><th>Documento</th><th></th></tr></thead><tbody>'+all.map((x,i)=>'<tr data-arq="'+i+'" data-menu="'+esc(x.menu)+'"><td>'+fDate(x.d)+'</td><td>'+esc(x.menu)+'</td><td>'+esc(x.reg)+'</td><td><a data-ao="'+i+'">'+esc(x.name)+'</a> <span class="mut sm">'+(x.size?Math.round(x.size/1024)+' KB':'')+'</span></td><td>'+(x.id?'<button class="btn s" data-ar="'+i+'">Registo</button>':'<a class="btn s" href="#/'+x.k+'">Página</a>')+' <button class="btn s" data-as="'+i+'">✉</button></td></tr>').join('')+'</tbody></table></div>':'<div class="card empty">Ainda não há documentos anexados.</div>'); }
 let ARQ=[];
 function bindArquivo(){ const v=document.getElementById('view'); const q=v.querySelector('#aq'), mm=v.querySelector('#am');
   const flt=()=>{ const t=(q.value||'').toLowerCase(), m=mm.value; v.querySelectorAll('tr[data-arq]').forEach(tr=>{ tr.style.display=(!m||tr.dataset.menu===m)&&tr.textContent.toLowerCase().includes(t)?'':'none'; }); };
   if(q){ q.oninput=flt; mm.onchange=flt; }
   v.querySelectorAll('[data-ao]').forEach(a=>a.onclick=async e=>{ e.stopPropagation(); const x=ARQ[+a.dataset.ao]; openBlob(await FDB.get(x.fid).catch(()=>null),x.name); });
-  v.querySelectorAll('[data-ar]').forEach(b=>b.onclick=()=>{ const x=ARQ[+b.dataset.ar]; openForm(x.k,x.id); }); }
+  v.querySelectorAll('[data-ar]').forEach(b=>b.onclick=()=>{ const x=ARQ[+b.dataset.ar]; openForm(x.k,x.id); });
+  v.querySelectorAll('[data-as]').forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const x=ARQ[+b.dataset.as]; const bl=await FDB.get(x.fid).catch(()=>null); if(!bl){ toast('Anexo não encontrado neste dispositivo'); return; } shareDoc({file:new File([bl],x.name,{type:bl.type||'application/octet-stream'}),name:x.name,subject:x.name}); }); }
 /* ---------- Modelos genéricos por menu (planos e listas) ---------- */
 const GEN_EPIS={comum:[{nome:'Luvas descartáveis (nitrilo, uso alimentar)',tipo:'Proteção das mãos (luvas)',norma:'EN ISO 374 · Reg. (CE) 1935/2004',periodicidade:'1'},{nome:'Touca descartável',tipo:'Proteção da cabeça (touca / barrete)',periodicidade:'1'},{nome:'Bata / jaleca de trabalho',tipo:'Vestuário (bata / avental / fato)',periodicidade:'365'},{nome:'Avental impermeável',tipo:'Vestuário (bata / avental / fato)',periodicidade:'180'},{nome:'Calçado de segurança antiderrapante',tipo:'Calçado de segurança',norma:'EN ISO 20345 (SRC)',periodicidade:'365'},{nome:'Casaco térmico para câmaras frigoríficas',tipo:'Vestuário (bata / avental / fato)',norma:'EN 342',periodicidade:'730'}],
  padaria:[{nome:'Luvas térmicas para forno',tipo:'Proteção das mãos (luvas)',norma:'EN 407',periodicidade:'180'},{nome:'Máscara FFP2 (pó de farinha)',tipo:'Proteção respiratória (máscara)',norma:'EN 149',periodicidade:'1'}],
@@ -1626,19 +1708,85 @@ function recSearch(key,r){ const m=M[key]; const out=[];
   m.f.forEach(f=>{ const v=r[f.k]; if(f.t==='lines'){ (v||[]).forEach(l=>f.cols.forEach(c=>val(c,l[c.k]))); } else if(f.t==='dyn'){ (v||[]).forEach(x=>{ out.push(x.item||''); Object.values(x.v||{}).forEach(y=>out.push(y)); }); } else val(f,v); });
   Object.entries(r.extra||{}).forEach(([k,v])=>out.push(k+' '+v)); (r.assinaturas||[]).forEach(a=>out.push(a.nome)); if(r.conforme) out.push(r.conforme); if(r._prob) out.push(r._prob);
   try{ out.push(m.label(r)); }catch(e){} return norm(out.join(' ')); }
-const QUICK={materias:['nome','tipo','unidade'],fornecedores:['nome','nif','contacto'],clientes:['nome','nif','contacto'],produtos:['nome','codigo','vidaUtil'],equipamentos:['nome','tipo'],colaboradores:['nome','funcao'],receitas:null,higPlano:null,paramControlo:null,modelos:null,planoAnalises:null,epis:['nome','tipo']};
+const QUICK={recetores:['nome','aprovacao','morada','email'],materias:['nome','tipo','unidade'],fornecedores:['nome','nif','contacto'],clientes:['nome','nif','contacto'],produtos:['nome','codigo','vidaUtil'],equipamentos:['nome','tipo'],colaboradores:['nome','funcao'],receitas:null,higPlano:null,paramControlo:null,modelos:null,planoAnalises:null,epis:['nome','tipo']};
 const COMPLETE={materias:['tipo','unidade','fornecedor','conservacao'],produtos:['vidaUtil','conservacao','uso','consumidores'],fornecedores:['nif','contacto','classificacao'],clientes:['nif','contacto'],equipamentos:['tipo','local'],colaboradores:['funcao','aptidao'],epis:['tipo']};
 function quickAdd(k,sel,root,after){ const qf=QUICK[k]; if(!qf){ sel.value=''; closeModal(2); location.hash='#/'+k; closeModal(1); toast('Crie o registo em «'+M[k].t+'» e volte'); return; }
-  const fs=qf.map(x=>M[k].f.find(f=>f.k===x)).filter(Boolean); const rec={}; M[k].f.forEach(f=>{ if(f.def) rec[f.k]=f.def(); });
+  const isSP=k==='materias'&&!!sel.closest('[data-lines="subprodutos"],[data-lines="subprod"]');
+  const fs=(isSP?['nome','unidade','catSP','recetorPrinc']:qf).map(x=>M[k].f.find(f=>f.k===x)).filter(Boolean); const rec={}; M[k].f.forEach(f=>{ if(f.def) rec[f.k]=f.def(); }); if(isSP){ rec.tipo='Subproduto / resíduo'; rec.catSP=''; }
   const prev=sel.dataset.prev||'';
-  modal('Adicionar — '+M[k].t,'<p class="sm mut">Preencha o essencial. Os restantes dados ficam pedidos nos alertas do Painel.</p><div class="grid">'+fs.map(f=>fieldHTML(f,rec[f.k]??'')).join('')+'</div>',
+  modal(isSP?'Novo subproduto / resíduo':'Adicionar — '+M[k].t,'<p class="sm mut">Preencha o essencial. Os restantes dados ficam pedidos nos alertas do Painel.</p><div class="grid">'+fs.map(f=>fieldHTML(f,rec[f.k]??'')).join('')+'</div>',
     [{l:'Cancelar',fn:()=>{ sel.value=prev; closeModal(2); }},{l:'Adicionar',c:'p',fn:r=>{ const v=readForm(r,fs); const miss=fs.filter(f=>f.req&&!v[f.k]); if(miss.length){ toast('Preencha: '+miss.map(f=>f.l).join(', ')); return; }
-      const nr=Object.assign({id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_quick:1},rec,v); if(M[k].compute) M[k].compute(nr); delete nr._limDef; D(k).push(nr); save();
+      const nr=Object.assign({id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_quick:isSP?0:1},rec,v); if(isSP) delete nr._quick; if(M[k].compute) M[k].compute(nr); delete nr._limDef; D(k).push(nr); save();
       root.querySelectorAll('select[data-ref="'+k+'"]').forEach(s2=>{ const o=document.createElement('option'); o.value=nr.id; o.textContent=M[k].label(nr); s2.insertBefore(o,s2.querySelector('option[value="__new"]')); });
       sel.value=nr.id; closeModal(2); toast('Adicionado a «'+M[k].t+'»'); sel.dispatchEvent(new Event('change',{bubbles:true})); if(after) after(); }}],2,()=>{ if(sel.value==='__new') sel.value=prev; });
 }
 function missingData(){ const out=[]; Object.entries(COMPLETE).forEach(([k,fs])=>D(k).forEach(r=>{ if(!r._quick) return; const miss=fs.filter(f=>{ const v=r[f]; return v==null||v===''||(Array.isArray(v)&&!v.length); }).map(f=>(M[k].f.find(x=>x.k===f)||{l:f}).l.replace(/\s*\(.*\)$/,'').toLowerCase());
     if(k==='materias') miss.push('confirmar alergénios'); out.push({k,id:r.id,t:'Completar a ficha — '+({materias:'Matéria-prima',produtos:'Produto',fornecedores:'Fornecedor',clientes:'Cliente',equipamentos:'Equipamento',colaboradores:'Colaborador',epis:'EPI'}[k]||M[k].t)+' «'+M[k].label(r)+'»: '+miss.join(', ')}); })); return out; }
+function lotesExtra(r){ return M.lotes._x(r); }
+const GUIA_VIA=(g,E,info,animal)=>(t)=>'<div style="page-break-after:always;padding:6px 0">'+docHead(animal?'Guia de acompanhamento de subprodutos animais':'Guia de acompanhamento de resíduos','Documento comercial — Reg. (CE) 1069/2009 e Reg. (UE) 142/2011, anexo VIII, cap. III · <b>'+t+'</b>')+
+    (info?'<div style="background:'+info.cor+';color:'+info.txt+';padding:8px 12px;font-weight:800;letter-spacing:.04em;border-radius:6px;margin-bottom:8px">'+esc(g.categoria.replace('Subproduto animal — ','').toUpperCase())+' — '+info.rot+'</div>':'')+
+    '<table><tr><th style="width:38%">Nº da guia</th><td><b>'+esc(g.numero)+'</b></td></tr><tr><th>Data de saída</th><td>'+fDate(g.data)+'</td></tr>'+
+    '<tr><th>1. Origem (expedidor)</th><td>'+esc(E.nome||'')+'<br>'+esc(E.morada||'')+(E.nif?'<br>NIF '+esc(E.nif):'')+(E.controlo?'<br>Nº aprovação / registo: '+esc(E.controlo):'')+'</td></tr>'+
+    '<tr><th>2. Descrição do material</th><td>'+esc(g.material)+'<br>Categoria: <b>'+esc(g.categoria)+'</b>'+(g.especie?'<br>Espécie: '+esc(g.especie):'')+(g.lotes?'<br>Lotes de origem: '+esc(g.lotes):'')+'</td></tr>'+
+    '<tr><th>3. Quantidade</th><td>'+esc(g.quantidade)+' '+esc(g.unidade||'')+(g.embalagens?' · '+esc(g.embalagens)+' embalagem(ns)/contentor(es)':'')+'</td></tr>'+
+    '<tr><th>4. Transportador</th><td>'+esc(g.transportador||'')+(g.transpReg?'<br>Nº registo: '+esc(g.transpReg):'')+(g.matricula?'<br>Matrícula: '+esc(g.matricula):'')+(g.temp!=null&&g.temp!==''?'<br>Temperatura: '+esc(g.temp)+' °C':'')+'</td></tr>'+
+    '<tr><th>5. Destinatário</th><td>'+esc(g.destinatario||'')+(g.destAprov?'<br>Nº aprovação / registo: '+esc(g.destAprov):'')+'</td></tr>'+
+    '<tr><th>6. Finalidade / tratamento</th><td>'+esc(g.finalidade||'')+'</td></tr>'+(g.egar?'<tr><th>Nº e-GAR</th><td>'+esc(g.egar)+'</td></tr>':'')+'</table>'+
+    '<div class="sigs" style="margin-top:12px">'+[['Expedidor',g.sigExp],['Transportador',g.sigTr],['Destinatário (receção)',null]].map(([l,sg])=>'<div class="sig" style="min-width:200px">'+(sg?'<img data-fid="'+esc(sg.fid)+'" alt="assinatura">':'<div style="height:50px"></div>')+'<div class="sm"><b>'+l+'</b><br>'+(sg?esc(sg.nome)+' · '+fDate(sg.dt):'Nome / assinatura / data: ______________________')+'</div></div>').join('')+'</div>'+
+    '<p class="sm" style="margin-top:8px">Via original acompanha o material e fica com o destinatário; uma cópia fica com o produtor e outra com o transportador. Conservar durante 2 anos.</p></div>';
+function guiaFromRecetor(rc){ if(!rc) return {}; return {recetor:rc.id,destinatario:[rc.nome,rc.morada].filter(Boolean).join(', ')+(rc.nif?' (NIF '+rc.nif+')':''),destAprov:rc.aprovacao||'',finalidade:rc.finalidade||'',transportador:rc.transportador||[rc.nome,rc.morada].filter(Boolean).join(', '),transpReg:rc.transpReg||'',matricula:rc.matricula||''}; }
+function recetorOf(mid,cat){ const m=D('materias').find(x=>x.id===mid)||{}; let r=D('recetores').find(x=>x.id===m.recetorPrinc); if(!r&&(m.recetores||[]).length) r=D('recetores').find(x=>x.id===m.recetores[0]); if(!r) r=D('recetores').find(x=>(x.categorias||[]).includes(cat)&&D('recetores').filter(y=>(y.categorias||[]).includes(cat)).length===1); return r||null; }
+async function htmlToPdf(html,name){ await loadScript(LIB.h2p); const wrap=document.createElement('div'); wrap.style.cssText='position:fixed;left:-10000px;top:0;width:800px;height:0;overflow:hidden'; const box=document.createElement('div'); box.innerHTML=html; box.style.cssText='width:720px;background:#fff;color:#111;padding:16px;font:12px/1.4 system-ui,Arial,sans-serif'; wrap.appendChild(box);
+  const st=document.createElement('style'); st.textContent='*{box-sizing:border-box}table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;word-break:break-word}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left;vertical-align:top}th{background:#f1f1f1}.sigs{display:flex;gap:10px;flex-wrap:wrap}.sig img{max-height:60px}h1{font-size:18px}h2{font-size:15px}h3{font-size:13px}.noprint{display:none!important}'; box.prepend(st); document.body.appendChild(wrap);
+  for(const img of box.querySelectorAll('img[data-fid]')){ const b=await FDB.get(img.dataset.fid).catch(()=>null); if(b) img.src=await b64(b); }
+  try{ return await html2pdf().set({margin:10,filename:name,image:{type:'jpeg',quality:0.92},html2canvas:{scale:2,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(box).outputPdf('blob'); } finally{ wrap.remove(); } }
+function shareDoc(o){ const can=!!(navigator.canShare&&navigator.share);
+  modal('Enviar por email','<div class="grid"><label class="f wide"><span>Para</span><input id="emTo" type="email" value="'+esc(o.to||'')+'" placeholder="email@exemplo.pt"></label><label class="f wide"><span>Assunto</span><input id="emSu" value="'+esc(o.subject||o.name)+'"></label><label class="f wide"><span>Mensagem</span><textarea id="emBo">'+esc(o.body||('Bom dia,\n\nSegue em anexo: '+(o.subject||o.name)+'.\n\nCumprimentos,\n'+(CUR?CUR.nome:'')+'\n'+(S.empresa.nome||'')))+'</textarea></label></div>'+
+    '<p class="sm mut" id="emSt">'+(can?'«Partilhar» abre a app de email (ou WhatsApp) do telemóvel com o PDF já anexado.':'O PDF é descarregado e o email abre preenchido — só falta anexar o PDF.')+'</p>',
+    [{l:'Cancelar',fn:()=>closeModal(2)},{l:'Descarregar PDF',fn:async r=>{ const f=await mkFile(r); if(f) download(f,f.name); }},{l:can?'Partilhar / email':'Abrir email',c:'p',fn:async r=>{ const f=await mkFile(r); if(!f) return; const to=r.querySelector('#emTo').value.trim(), su=r.querySelector('#emSu').value, bo=r.querySelector('#emBo').value;
+      if(can&&navigator.canShare({files:[f]})){ try{ await navigator.share({files:[f],title:su,text:bo}); closeModal(2); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
+      download(f,f.name); setTimeout(()=>{ location.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(su)+'&body='+encodeURIComponent(bo+'\n\n(Anexo: '+f.name+')'); },400); closeModal(2); }}],2);
+  async function mkFile(r){ const st=r.querySelector('#emSt'); try{ if(o.file) return o.file; st.textContent='A gerar o PDF…'; const blob=o.blob||await htmlToPdf(o.html,o.name); st.textContent='PDF pronto.'; return new File([blob],o.name.endsWith('.pdf')?o.name:o.name+'.pdf',{type:'application/pdf'}); }catch(e){ st.textContent='Não foi possível gerar o PDF: '+(e.message||e); return null; } } }
+function recordEmailTo(key,r){ const pick=(k,id)=>{ const x=D(k).find(y=>y.id===id); return x&&x.email||''; }; return r.email||(r.cliente&&pick('clientes',r.cliente))||(r.fornecedor&&pick('fornecedores',r.fornecedor))||(r.recetor&&pick('recetores',r.recetor))||''; }
+function nextGuia(){ const y=today().slice(0,4); const n=D('guiasSP').filter(g=>String(g.numero||'').includes(y)).length+1; let c; let k=n; do{ c='SP'+y+'/'+String(k++).padStart(3,'0'); }while(D('guiasSP').some(g=>g.numero===c)); return c; }
+function spCatOfRes(r){ const m=D('materias').find(x=>x.id===r.materia); if(m&&m.catSP) return m.catSP; if(/categoria 1/.test(r.tipo||'')) return SP_CATS[2]; if(/categoria 2/.test(r.tipo||'')) return SP_CATS[1]; if(/Óleos/.test(r.tipo||'')) return SP_CATS[3]; if(/animal|Soro/.test(r.tipo||'')) return SP_CATS[0]; return SP_CATS[4]; }
+function openGuiaFrom(ids){ const rs=ids.map(id=>D('residuos').find(x=>x.id===id)).filter(Boolean); if(!rs.length) return; const r0=rs[0]; const cat=spCatOfRes(r0); const m=D('materias').find(x=>x.id===r0.materia);
+  const prev=D('guiasSP').filter(g=>g.categoria===cat).sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0]||{};
+  const tot=rs.reduce((t,x)=>t+(num(x.quantidade)||0),0);
+  openForm('guiasSP',null,{categoria:cat,material:m?m.nome:(r0.tipo||''),quantidade:String(rnd(tot)),unidade:r0.unidade||'kg',lotes:[...new Set(rs.map(x=>x.lote).filter(Boolean))].join(', '),residuos:rs.map(x=>x.id),
+    transportador:prev.transportador||'',transpReg:prev.transpReg||'',matricula:prev.matricula||'',destinatario:prev.destinatario||(m&&m.destinoSP)||r0.destino||'',destAprov:prev.destAprov||'',finalidade:prev.finalidade||'',especie:prev.especie||''}); }
+function guiaHTML(g){ const E=S.empresa; const info=SP_INFO[g.categoria]; const animal=/^Subproduto animal/.test(g.categoria||'');
+  const via=GUIA_VIA(g,E,info,animal); return via('Via 1 — Original (destinatário)')+via('Via 2 — Produtor / expedidor')+via('Via 3 — Transportador'); }
+function printGuia(g){ const E=S.empresa; const info=SP_INFO[g.categoria]; const animal=/^Subproduto animal/.test(g.categoria||'');
+  const via=GUIA_VIA(g,E,info,animal); const _unused=(t)=>'<div style="page-break-after:always;padding:6px 0">'+docHead(animal?'Guia de acompanhamento de subprodutos animais':'Guia de acompanhamento de resíduos','Documento comercial — Reg. (CE) 1069/2009 e Reg. (UE) 142/2011, anexo VIII, cap. III · <b>'+t+'</b>')+
+    (info?'<div style="background:'+info.cor+';color:'+info.txt+';padding:8px 12px;font-weight:800;letter-spacing:.04em;border-radius:6px;margin-bottom:8px">'+esc(g.categoria.replace('Subproduto animal — ','').toUpperCase())+' — '+info.rot+'</div>':'')+
+    '<table><tr><th style="width:38%">Nº da guia</th><td><b>'+esc(g.numero)+'</b></td></tr><tr><th>Data de saída</th><td>'+fDate(g.data)+'</td></tr>'+
+    '<tr><th>1. Origem (expedidor)</th><td>'+esc(E.nome||'')+'<br>'+esc(E.morada||'')+(E.nif?'<br>NIF '+esc(E.nif):'')+(E.controlo?'<br>Nº aprovação / registo: '+esc(E.controlo):'')+'</td></tr>'+
+    '<tr><th>2. Descrição do material</th><td>'+esc(g.material)+'<br>Categoria: <b>'+esc(g.categoria)+'</b>'+(g.especie?'<br>Espécie: '+esc(g.especie):'')+(g.lotes?'<br>Lotes de origem: '+esc(g.lotes):'')+'</td></tr>'+
+    '<tr><th>3. Quantidade</th><td>'+esc(g.quantidade)+' '+esc(g.unidade||'')+(g.embalagens?' · '+esc(g.embalagens)+' embalagem(ns)/contentor(es)':'')+'</td></tr>'+
+    '<tr><th>4. Transportador</th><td>'+esc(g.transportador||'')+(g.transpReg?'<br>Nº registo: '+esc(g.transpReg):'')+(g.matricula?'<br>Matrícula: '+esc(g.matricula):'')+(g.temp!=null&&g.temp!==''?'<br>Temperatura: '+esc(g.temp)+' °C':'')+'</td></tr>'+
+    '<tr><th>5. Destinatário</th><td>'+esc(g.destinatario||'')+(g.destAprov?'<br>Nº aprovação / registo: '+esc(g.destAprov):'')+'</td></tr>'+
+    '<tr><th>6. Finalidade / tratamento</th><td>'+esc(g.finalidade||'')+'</td></tr>'+(g.egar?'<tr><th>Nº e-GAR</th><td>'+esc(g.egar)+'</td></tr>':'')+'</table>'+
+    '<div class="sigs" style="margin-top:12px">'+[['Expedidor',g.sigExp],['Transportador',g.sigTr],['Destinatário (receção)',null]].map(([l,sg])=>'<div class="sig" style="min-width:200px">'+(sg?'<img data-fid="'+esc(sg.fid)+'" alt="assinatura">':'<div style="height:50px"></div>')+'<div class="sm"><b>'+l+'</b><br>'+(sg?esc(sg.nome)+' · '+fDate(sg.dt):'Nome / assinatura / data: ______________________')+'</div></div>').join('')+'</div>'+
+    '<p class="sm" style="margin-top:8px">Via original acompanha o material e fica com o destinatário; uma cópia fica com o produtor e outra com o transportador. Conservar durante 2 anos.</p></div>';
+  const el=document.getElementById('printOne'); el.innerHTML=guiaHTML(g);
+  (async()=>{ for(const img of el.querySelectorAll('img[data-fid]')){ const b=await FDB.get(img.dataset.fid).catch(()=>null); if(b) img.src=await b64(b); } document.body.classList.add('print-one'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-one'),500); },150); })(); }
+function syncSPResiduos(p){ const keep=new Set(); const rc=D('receitas').find(x=>x.id===p.receita);
+  (p.subprod||[]).forEach(sp=>{ if(!sp.materia||!(num(sp.qtd)>0)||sp.destino==='Stock (reutilizar)') return; const src='lotes:'+p.id+':'+sp.materia; keep.add(src); const m=D('materias').find(x=>x.id===sp.materia);
+    const tipo=m&&/Categoria 1/.test(m.catSP||'')?'Subproduto animal (categoria 1)':m&&/Categoria 2/.test(m.catSP||'')?'Subproduto animal (categoria 2)':m&&/óleo/i.test((m.catSP||'')+m.nome)?'Óleos alimentares usados':m&&/soro/i.test(m.nome)?'Soro de queijaria':sp.destino==='Resíduo'?'Resíduos orgânicos':'Subproduto animal (categoria 3)';
+    let x=D('residuos').find(y=>y._src===src); if(!x){ x={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_src:src,estadoSP:'Em armazenagem',responsavel:p.responsavel||''}; D('residuos').push(x); }
+    Object.assign(x,{data:p.data,tipo,materia:sp.materia,lote:p.lote,quantidade:String(sp.qtd),unidade:unidOf(sp.materia)||'kg'}); x._m=nowLocal();
+    const cat=(m&&m.catSP)||spCatOfRes(x); if(cat==='Reutilizado internamente (não sai da empresa)') return;
+    let g=D('guiasSP').find(y=>y._src===src);
+    if(!g){ const rc=recetorOf(sp.materia,cat); g={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_src:src,_auto:1,numero:nextGuia(),estadoG:'Rascunho',categoria:cat,unidade:x.unidade,residuos:[x.id],...guiaFromRecetor(rc)}; D('guiasSP').push(g); }
+    if(g.estadoG==='Rascunho'){ Object.assign(g,{data:p.data,material:m?m.nome:tipo,quantidade:String(sp.qtd),unidade:x.unidade,lotes:p.lote}); if(!g.recetor){ const rc=recetorOf(sp.materia,cat); if(rc) Object.assign(g,guiaFromRecetor(rc)); } g._m=nowLocal(); }
+    x.guia=g.numero; x.destino=g.destinatario||x.destino||''; });
+  S.data.residuos=D('residuos').filter(y=>!(String(y._src||'').startsWith('lotes:'+p.id+':')&&!keep.has(y._src)&&!(y.guia&&D('guiasSP').some(g=>g.numero===y.guia&&g.estadoG!=='Rascunho'))));
+  S.data.guiasSP=D('guiasSP').filter(g=>!(String(g._src||'').startsWith('lotes:'+p.id+':')&&!keep.has(g._src)&&g.estadoG==='Rascunho')); }
+function subsFromProd(rc,p){ if(!rc||!(rc.subprodutos||[]).length) return []; const lines=(p.ingr||[]).filter(l=>l.materia&&num(l.liq)!=null).map(l=>({materia:l.materia,liq:+l.liq})); const tot=lines.reduce((t,l)=>t+l.liq,0);
+  const fac=num(p.vezes)&&/vezes/.test(p.modoCalc||'')?+p.vezes:(num(p.quantidade)!=null&&num(rc.rendimento)?+p.quantidade/+rc.rendimento:1); const prodQ=num(p.qtdReal)!=null?+p.qtdReal:num(p.quantidade);
+  return rc.subprodutos.filter(x=>x.materia&&num(x.qtd)!=null).map(x=>{ const md=x.modo||'% de um ingrediente'; let q=null; if(md==='% de um ingrediente'){ const l=lines.find(y=>y.materia===x.ref); q=l?l.liq*+x.qtd/100:null; } else if(/total de ingredientes/.test(md)) q=tot*+x.qtd/100; else if(md==='% do produto obtido') q=prodQ!=null?prodQ*+x.qtd/100:null; else q=+x.qtd*fac; return q==null?null:{id:uid(),materia:x.materia,qtd:String(rnd(q)),destino:spDestino(x.materia)}; }).filter(Boolean); }
+function spDestino(mid){ const mm=D('materias').find(y=>y.id===mid)||{}; return /^Subproduto animal/.test(mm.catSP||'')?'Subproduto animal (Reg. 1069/2009)':/^Resíduo/.test(mm.catSP||'')?'Resíduo':'Stock (reutilizar)'; }
 function genericValidate(key,r){
   const m=M[key];
   for(const f of m.f){ const v=r[f.k]; if(v==null||v==='') continue;
@@ -1676,7 +1824,12 @@ function signPad(o){ return new Promise(res=>{
   cv.addEventListener('pointermove',e=>{ if(!drawing) return; const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; drawn=true; e.preventDefault(); });
   ['pointerup','pointercancel','pointerleave'].forEach(ev=>cv.addEventListener(ev,()=>{ drawing=false; }));
 }); }
-async function printRecord(key,r){
+async function printRecord(key,r){ const h=recordHTML(key,r);
+  const el=document.getElementById('printOne'); el.innerHTML=h;
+  for(const img of el.querySelectorAll('img[data-fid]')){ const b=await FDB.get(img.dataset.fid).catch(()=>null); if(b){ img.src=await b64(b); } }
+  document.body.classList.add('print-one'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-one'),500); },150);
+}
+function recordHTML(key,r){
   const m=M[key]; let h=docHead(m.t,esc(m.label(r)))+'<table>';
   m.f.forEach(f=>{ if(f.t==='files'){ if((r[f.k]||[]).length) h+='<tr><th>'+esc(f.l)+'</th><td>'+r[f.k].map(x=>esc(x.name)).join('<br>')+'</td></tr>'; return; } if(f.t==='sig') return; const v=r[f.k];
     if(f.t==='dyn'){ const t=f.print(r); if(t) h+='<tr><th>'+esc(f.l)+'</th><td>'+t+'</td></tr>'; return; }
@@ -1686,11 +1839,8 @@ async function printRecord(key,r){
   if(r.conforme&&!m.f.find(x=>x.k==='conforme')) h+='<tr><th>Conformidade</th><td>'+esc(r.conforme)+(r._prob?' — '+esc(r._prob):'')+'</td></tr>';
   h+='</table>';
   const sigs=[...m.f.filter(f=>f.t==='sig'&&r[f.k]).map(f=>({...r[f.k],papel:r[f.k].papel||f.l})),...(r.assinaturas||[])];
-  h+='<h3>Assinaturas</h3><div class="sigs">'+(sigs.length?sigs.map(s=>sigCard(s,'')).join(''):'<p>______________________________</p>')+'</div><p class="sm" style="margin-top:14px">'+esc(auditTxt(r))+' · Impresso em '+fDate(nowLocal())+'</p>';
-  const el=document.getElementById('printOne'); el.innerHTML=h;
-  for(const img of el.querySelectorAll('img[data-fid]')){ const b=await FDB.get(img.dataset.fid).catch(()=>null); if(b){ img.src=await b64(b); } }
-  document.body.classList.add('print-one'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-one'),500); },150);
-}
+  h+='<h3>Assinaturas</h3><div class="sigs">'+(sigs.length?sigs.map(s=>sigCard(s,'')).join(''):'<p>______________________________</p>')+'</div><p class="sm" style="margin-top:14px">'+esc(auditTxt(r))+' · Emitido em '+fDate(nowLocal())+'</p>';
+  return h; }
 
 /* ---------- Modais (2 camadas) ---------- */
 const onClose={};
@@ -2181,6 +2331,176 @@ function bindSync(){ const go=document.getElementById('syGo'); if(go) go.onclick
   const nw=document.getElementById('syNow'); if(nw) nw.onclick=async()=>{ await SYNC.run(); render(); toast(SYNC.err?'Erro: '+SYNC.err:'Sincronizado'); };
   const off=document.getElementById('syOff'); if(off) off.onclick=()=>{ if(!confirm('Desligar este dispositivo da nuvem? Os dados ficam neste dispositivo mas deixam de sincronizar.')) return; SYNC.setCfg(null); SYNC.status(''); render(); };
   const cp=document.getElementById('syCopy'); if(cp) cp.onclick=()=>{ navigator.clipboard&&navigator.clipboard.writeText(SYNC_SQL).then(()=>toast('SQL copiado')); }; }
+
+/* ---------- Ajuda contextual («Como funciona») ---------- */
+const HELP={
+ codLotes:['Defina aqui como os lotes são atribuídos. A app aplica as regras sozinha na receção, na produção e nos subprodutos.',
+  ['<b>Produto acabado:</b> escreva a regra geral (ex.: <b>AAMMDD</b> ou <b>COD-JJJ-NN</b>). Em «Artigo a artigo» dê a cada artigo o seu código (COD) e, se precisar, uma regra só para ele.',
+   '<b>Matérias-primas:</b> escolha se atribui lote interno a nenhuma, só às que chegam sem lote, ou a todas. Depois afine por <b>fornecedor</b> e por <b>matéria-prima</b> — a matéria-prima manda sobre o fornecedor, e o fornecedor sobre a regra geral.',
+   '<b>Subprodutos:</b> por defeito ficam com o lote da produção de onde vêm; pode acrescentar, ex.: <b>LOTE-S</b>.',
+   'Escreva à sua maneira: a app mostra a <b>interpretação</b> e um <b>exemplo</b> em cada linha antes de guardar. Texto fixo entre aspas: <b>"L"AAMMDD</b>.',
+   'Na produção e na receção o lote aparece preenchido, mas pode sempre alterá-lo à mão. Nunca há dois lotes iguais.']],
+ lotes:['Cada produção cria um lote, abate o stock das matérias-primas e fica ligada à rastreabilidade.',
+  ['Escolha o <b>produto</b> e a <b>receita</b>. O lote e a validade são preenchidos pela regra definida.',
+   'Escolha como calcular: <b>quantidade a produzir</b> (ex.: 10 refeições — a receita é ajustada), <b>nº de vezes a receita</b> (receitas fixas), <b>ingrediente base</b> (ex.: 200 L de leite — os outros em % dele) ou <b>manual</b>.',
+   'Em «Mostrar quantidades calculadas» escolha <b>Não</b> se quiser que o operador escreva as quantidades que usou.',
+   'Em cada ingrediente a app sugere o <b>lote a usar</b> (o que expira primeiro). Pode escolher outro.',
+   'Os <b>subprodutos</b> (ex.: soro) são calculados e registados sozinhos em «Resíduos e subprodutos».',
+   'Para várias receitas de uma vez use <b>Produção do dia</b>: mostra o total de cada matéria-prima e o que falta em stock.']],
+ receitas:['A receita é a base para calcular a produção, os alergénios e os subprodutos.',
+  ['Indique o <b>rendimento</b> (o que a receita dá, ex.: 4 refeições ou 15 kg).',
+   'Em cada ingrediente escolha o cálculo: <b>Proporcional</b> (acompanha a quantidade produzida), <b>Fixa</b> (sempre igual) ou <b>% do ingrediente base</b> (ex.: sal 2 % da farinha — escolha antes o ingrediente base).',
+   '<b>Aproveitamento %</b>: se o ingrediente perde peso ao ser limpo (ex.: batata descascada 80 %), a app abate ao stock o peso comprado.',
+   '<b>Subprodutos</b>: indique em % de um ingrediente, % da receita, % do produto obtido ou quantidade fixa. Crie o subproduto em «+ Adicionar novo».',
+   'Ingredientes novos criam-se em «+ Adicionar novo…» — ficam logo em Matérias-primas e o Painel pede os dados em falta.']],
+ rececao:['Uma receção por documento (fatura ou guia) com várias linhas.',
+  ['Escolha o <b>fornecedor</b> e escreva o nº do documento.',
+   'Leia o <b>código de barras</b> de cada produto ou importe a fatura (PDF/foto): a app preenche produto, lote e validade para confirmar.',
+   'Registe a <b>temperatura</b> dos refrigerados e o estado. Fora dos limites → não conformidade automática.',
+   'Se a empresa atribui <b>lote interno</b>, ele é gerado ao guardar (ver Definições de lotes).']],
+ stock:['O stock é calculado: receções − consumos da produção − movimentos.',
+  ['As matérias-primas aparecem com os lotes por ordem de validade. Toque em «Saída» para quebras, devoluções ou acertos.',
+   'O <b>produto acabado</b> mostra produzido, expedido e disponível por lote.',
+   'Subprodutos que voltam ao stock (ex.: soro) aparecem como lotes «subproduto da produção».']],
+ rastreio:['Escreva ou leia um lote (de produto ou de matéria-prima).',
+  ['<b>Para trás:</b> matérias-primas usadas, quantidades, fornecedor, receção e documento.',
+   '<b>Para a frente:</b> produções onde o lote entrou, subprodutos e clientes com documento e quantidade.',
+   'Toque num lote da tabela para continuar a rastrear. Imprima o relatório para um simulacro ou para a autoridade.']],
+ expedicoes:['Registe as saídas de produto acabado por lote para cada cliente.',
+  ['Escolha o cliente e, em cada linha, o <b>lote</b> e a quantidade — a app mostra o disponível e não deixa expedir a mais.',
+   'Isto completa a rastreabilidade para a frente e o stock de produto acabado.']],
+ residuos:['Saídas de subprodutos e resíduos (soro, aparas, óleos usados…).',
+  ['As saídas que vêm da produção são registadas sozinhas, com o lote de origem.',
+   'Para enviar, toque em <b>Emitir guia de acompanhamento</b> (ou em «Emitir guia para saídas em armazenagem» para juntar várias da mesma categoria).']],
+ recetores:['Lista das empresas que recebem os subprodutos.',['Registe cada recetor com o nº de aprovação/registo, as categorias que recebe, a finalidade e o transportador.','Em cada subproduto (Matérias-primas, tipo «Subproduto / resíduo») escolha a categoria e o recetor habitual — as guias passam a ser preenchidas sozinhas.']],
+ guiasSP:['Guia de acompanhamento de subprodutos animais (documento comercial — modelo DGAV 376/DGV).',
+  ['<b>Sempre que uma produção gera um subproduto, a guia é criada sozinha</b> (estado «Rascunho»), com os dados da empresa, a quantidade, os lotes e o recetor habitual desse subproduto. Se faltar o recetor, o Painel pede-o.',
+   'Da primeira vez escreva o transportador, o destinatário e os números de registo/aprovação — nas seguintes são copiados.',
+   'Assine (expedidor e transportador) e <b>Imprimir guia (3 vias)</b>: original para o destinatário, cópias para o produtor e o transportador. Guarde 2 anos.',
+   'Para óleos alimentares usados e outros resíduos não animais registe o nº da <b>e-GAR</b>.']],
+ modelos:['Fichas de registo à medida da empresa.',
+  ['Use <b>Modelos do sector</b> para começar, ou <b>Importar modelo da empresa</b> (Excel, Word, PDF ou foto do impresso que já usam).',
+   'Cada modelo tem <b>linhas fixas</b> (ex.: Fritadeira 1, Fritadeira 2) e <b>campos</b> com limites: fora dos limites → não conformidade.',
+   'Preenche-se em Registos diários › Outros registos. Pode imprimir o impresso em branco.']],
+ regularidade:['Diga com que regularidade cada registo deve ser feito.',
+  ['O Painel mostra «Para fazer hoje» e o semáforo: verde em dia, amarelo por fazer/a aproximar-se, vermelho em atraso.',
+   'Com <b>horas previstas</b> (ex.: 08:00; 18:00) o atraso conta a partir de cada hora.']],
+ importar:['Traga o que já tem em Excel, Word ou PDF.',
+  ['Para passar o HACCP inteiro para a app use <b>Importar o HACCP que a empresa já tem</b> — pode escolher todos os ficheiros de uma vez (ou um a um). Digitalizações e fotos também são lidas.',
+   'Use a <b>Importação inteligente</b>: escolha os ficheiros e a app sugere onde vai cada folha ou tabela.',
+   'Revê as colunas (a app lê os cabeçalhos) e pode desmarcar as linhas que não quer.',
+   'Se o registo já existir (mesmo NIF ou nome), é atualizado em vez de duplicado.']],
+ sync:['Mantém os dados iguais em vários dispositivos.',
+  ['Precisa de uma conta gratuita no Supabase (configuração feita uma vez — instruções em baixo).',
+   'Em cada dispositivo preencha os dados da ligação. Funciona sem rede e envia quando a ligação volta.']],
+ utilizadores:['Cada pessoa entra com o seu utilizador e só vê o que lhe atribuir.',
+  ['Toque no utilizador → perfil «Utilizador» → escolha o nível de cada menu (Consultar, Registar, Total) ou um <b>perfil rápido</b>.',
+   'O Administrador vê tudo.']],
+ analise:['A análise de perigos é gerada a partir do fluxograma, dos produtos e dos sectores.',
+  ['Reveja cada perigo: probabilidade × gravidade dá o risco; os significativos passam pela árvore de decisão (Codex).',
+   'Nos PCC defina limite crítico, monitorização, ação corretiva e <b>validação</b>.']],
+ registos:['Preenchimento dos modelos de registo.',
+  ['Escolha o modelo; aparecem as linhas e os campos. Valores fora dos limites ficam a vermelho e pedem ação corretiva.']],
+ temperaturas:['Registo de temperaturas dos equipamentos de frio.',
+  ['Use <b>Registar todos os equipamentos</b> para escrever todas as câmaras de uma vez.',
+   'A regularidade de cada câmara define-se em Regularidade dos registos.']],
+ equipamentos:['Equipamentos, limites de temperatura e manutenção/calibração.',
+  ['Em «O que fazer na manutenção» descreva as tarefas — ou toque em <b>Sugerir</b>.',
+   'Com periodicidade e última intervenção, a app avisa quando estiver a chegar a data.']]
+};
+function helpHTML(k){ const h=HELP[k]; if(!h) return ''; let seen={}; try{ seen=JSON.parse(localStorage.getItem('haccp_help')||'{}'); }catch(e){}
+  return '<details class="card help noprint"'+(seen[k]?'':' open')+' data-help="'+k+'"><summary><b>❓ Como funciona</b></summary><p class="sm" style="margin:8px 0 6px">'+h[0]+'</p><ol class="sm" style="margin:0;padding-left:20px;line-height:1.6">'+h[1].map(x=>'<li>'+x+'</li>').join('')+'</ol></details>'; }
+function helpBind(){ const d=document.querySelector('#view details.help'); if(!d) return; const k=d.dataset.help; try{ const seen=JSON.parse(localStorage.getItem('haccp_help')||'{}'); if(!seen[k]){ seen[k]=1; localStorage.setItem('haccp_help',JSON.stringify(seen)); } }catch(e){} }
+
+/* =====================================================================
+   IMPORTAR O HACCP EXISTENTE (um documento ou tudo de uma vez)
+   ===================================================================== */
+const ETAPA_KW=[[/descongel/,'descongelacao'],[/rececao|recepcao|recebiment/,'rececao'],[/congel/,'armaz_cong'],[/refriger|camara|armazenamento a frio|conservacao a frio/,'armaz_refrig'],[/armazen|stock|deposito/,'armaz_amb'],
+ [/lavagem.*(veg|horto|fruta|legum)|desinfecao de veg/,'lavagem_veg'],[/pesag|dosea|mistur|amassa|batid|formulacao|padroniz|inocul|adicao de|fermento lact/,'mistura'],[/ferment|cura|matura|secag|fumag|repouso|incuba/,'fermentacao'],[/pasteuri/,'pasteurizacao'],
+ [/arrefec|abatedor/,'arrefecimento'],[/reaquec|regener/,'reaquecimento'],[/manutencao a quente|banho maria|servico|empratament/,'manutencao_quente'],[/coze|confec|tratamento termico|fritura|assar|grelh|forno/,'termico'],
+ [/deteca?o de metais|detetor|raio x|crivag|peneir/,'detecao'],[/rotul/,'rotulagem'],[/embal|acondic|engarraf|enchiment|vacuo/,'embalagem'],[/exped|transport|distribu|entrega/,'expedicao'],
+ [/prepar|corte|manipul|desman|filet|picag|molda|coalh|coagul|enform|salga|prensa|descasc|porcion|lavagem/,'preparacao']];
+function guessEtapa(n){ n=norm(n); for(const [re,t] of ETAPA_KW) if(re.test(n)) return t; return 'outro'; }
+const DOC_KINDS=[['haccp',/plano haccp|manual haccp|sistema haccp|estudo haccp/],['perigos',/analise de perigos|avaliacao de perigos|identificacao de perigos|arvore de decisao/],['pcc',/pontos? criticos? de controlo|\bpcc\b/],['fluxo',/fluxograma|diagrama de fluxo|fluxo de fabrico|fluxo produtivo/],
+ ['higiene',/plano de higieniza|plano de limpeza|limpeza e desinfe/],['pragas',/controlo de pragas|plano de pragas|desratiz|desinsect/],['analises',/plano de analises|plano analitico|autocontrolo analitico|plano de amostragem/],['formacao',/plano de formacao|formacao dos colaboradores/],
+ ['manutencao',/plano de manutencao|manutencao preventiva|plano de calibracao|calibracao/],['fornecedores',/fornecedores aprovados|lista de fornecedores|avaliacao de fornecedores/],['equipa',/equipa haccp/],['produto',/descricao do produto|ficha tecnica do produto|caracterizacao do produto/],
+ ['registo',/registo de|folha de registo|impresso|^mod[ .]|\bmod\.?\s*\d/],['procedimento',/procedimento|instrucao de trabalho|\bit[ _.-]\d|\bpro[ ._-]\d/]];
+function docKind(name,text){ const n=norm(name)+' '+norm(String(text||'').slice(0,4000)); const k=DOC_KINDS.filter(([k,re])=>re.test(n)).map(([k])=>k); return k; }
+function parseSteps(text){ const L=String(text||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean); const out=[];
+  L.forEach(l=>{ const m=l.match(/^(?:etapa|fase|passo)?\s*(\d{1,2})\s*[.)\-–:]\s*(.{3,70})$/i); if(m&&!/^\d/.test(m[2])) out.push({n:+m[1],nome:m[2].replace(/[.;:]$/,'')}); });
+  if(out.length>=3){ const seen=new Set(); return out.sort((a,b)=>a.n-b.n).filter(x=>{ const k=norm(x.nome); if(seen.has(k)) return false; seen.add(k); return true; }).map(x=>x.nome).slice(0,40); }
+  const arrows=L.filter(l=>/[↓→⇒>]/.test(l)).flatMap(l=>l.split(/[↓→⇒]|->|=>/)).map(x=>x.trim()).filter(x=>x.length>=3&&x.length<=60);
+  return arrows.length>=3?arrows.slice(0,40):[]; }
+const colIdx=(head,re)=>head.findIndex(h=>re.test(h));
+function parsePccTable(rows){ const hi=headerRow(rows); const H=(rows[hi]||[]).map(norm); if(!H.some(h=>/pcc|ponto critico/.test(h))&&!H.some(h=>/limite critico|limites criticos/.test(h))) return null; if(!H.some(h=>/limite/.test(h))) return null;
+  const ix={etapa:colIdx(H,/etapa|fase|operacao|passo/),pcc:colIdx(H,/^pcc|n pcc|ponto critico|codigo/),perigo:colIdx(H,/perigo/),medida:colIdx(H,/medida/),limite:colIdx(H,/limite/),monit:colIdx(H,/monitoriz|vigilancia|como|metodo/),freq:colIdx(H,/frequencia|quando/),resp:colIdx(H,/respons|quem/),acao:colIdx(H,/acao|acoes|correti|correcao/),verif:colIdx(H,/verifica/),registo:colIdx(H,/registo/),valid:colIdx(H,/valida/)};
+  const g=(r,k)=>ix[k]>=0?String(r[ix[k]]||'').trim():''; let last=''; const out=[];
+  rows.slice(hi+1).forEach(r=>{ if(!r.some(c=>String(c).trim())) return; let et=g(r,'etapa')||last; last=et; const lim=g(r,'limite'); if(!lim&&!g(r,'perigo')) return; out.push({etapa:et||g(r,'pcc')||'Etapa',code:g(r,'pcc'),perigo:g(r,'perigo')||'Perigo identificado no plano',medida:g(r,'medida'),limite:lim,monit:g(r,'monit'),freq:g(r,'freq'),resp:g(r,'resp'),acao:g(r,'acao'),verif:g(r,'verif'),registo:g(r,'registo'),validacao:g(r,'valid')}); });
+  return out.length?out:null; }
+function parseHazTable(rows){ const hi=headerRow(rows); const H=(rows[hi]||[]).map(norm); if(!H.some(h=>/perigo/.test(h))||!H.some(h=>/probab|gravid|severid|risco|medida|signific/.test(h))) return null;
+  const ix={etapa:colIdx(H,/etapa|fase|operacao/),perigo:colIdx(H,/perigo/),cat:colIdx(H,/tipo|categoria|natureza/),causa:colIdx(H,/causa|origem|justifica/),P:colIdx(H,/probab/),G:colIdx(H,/gravid|severid/),medida:colIdx(H,/medida/)};
+  const g=(r,k)=>ix[k]>=0?String(r[ix[k]]||'').trim():''; let last=''; const out=[];
+  rows.slice(hi+1).forEach(r=>{ const et=g(r,'etapa')||last; last=et; const pg=g(r,'perigo'); if(!pg) return; const c=norm(g(r,'cat')+' '+pg); const cat=/quim/.test(c)?'Q':/fisic/.test(c)?'F':/alerg/.test(c)?'A':'B';
+    const n=v=>{ const x=parseInt(String(v).replace(/[^\d]/g,'')); return x>=1&&x<=5?Math.min(3,x>3?3:x):''; };
+    out.push({etapa:et,perigo:pg,cat,causa:g(r,'causa'),P:n(g(r,'P')),G:n(g(r,'G')),medida:g(r,'medida')}); });
+  return out.length?out:null; }
+function findEtapa(nome,proc){ const n=norm(nome); if(!n) return null; const pool=D('etapas').filter(e=>!proc||e.processo===proc); return pool.find(e=>norm(e.nome)===n)||pool.find(e=>norm(e.nome).length>3&&(norm(e.nome).includes(n)||n.includes(norm(e.nome)))); }
+function ensureEtapa(nome,proc){ let e=findEtapa(nome,proc); if(e) return e; const o=Math.max(0,...D('etapas').filter(x=>x.processo===proc).map(x=>+x.ordem||0)); e={id:uid(),_c:nowLocal(),processo:proc,ordem:o+1,nome:String(nome).slice(0,80),tipo:guessEtapa(nome),produtos:[],_imp:1}; D('etapas').push(e); return e; }
+function importHazard(e,h,asPcc){ const x={id:uid(),etapa:e.id,cat:h.cat||'B',perigo:String(h.perigo).slice(0,200)}; S.ha.extra.push(x); const key=e.id+'|x_'+x.id;
+  const o={cat:x.cat,perigo:x.perigo}; if(h.causa) o.causa=h.causa; if(h.medida) o.medida=h.medida;
+  if(asPcc){ Object.assign(o,{P:3,G:3,q1:'S',q2:'S',q3:'S',q4:'N'}); const lm=String(h.limite||'').replace(',','.'); const mx=lm.match(/(?:≤|<=|<|max\.?|até)\s*(-?\d+(?:\.\d+)?)/i), mn=lm.match(/(?:≥|>=|>|min\.?|pelo menos)\s*(-?\d+(?:\.\d+)?)/i);
+    o.pcc={limite:h.limite||'',monit:h.monit||'',freq:h.freq||'',resp:h.resp||'',acao:h.acao||'',verif:h.verif||'',registo:h.registo||'',validacao:h.validacao||'',lmax:mx?+mx[1]:undefined,lmin:mn?+mn[1]:undefined,unidade:/°\s*c|ºc|graus/i.test(lm)?'°C':''}; }
+  else { if(h.P) o.P=h.P; if(h.G) o.G=h.G; o.q1='S'; o.q2='N'; o.q3='S'; o.q4='S'; o.causa=(o.causa?o.causa+' · ':'')+'Importado do HACCP da empresa — confirme a árvore de decisão'; }
+  S.ha.ov[key]=o; }
+const HACCP_DEST=()=>Object.keys(M).filter(k=>lvl(k)>=3&&!['verificacoes','registos','guiasSP'].includes(k)).sort((a,b)=>M[a].t.localeCompare(M[b].t));
+async function haccpImport(){ const inp=document.createElement('input'); inp.type='file'; inp.multiple=true; inp.accept='.pdf,.docx,.xlsx,.xls,.ods,.csv,.txt,image/*'; inp.onchange=async()=>{ const files=[...inp.files]; if(!files.length) return;
+  const st=modal('A analisar a documentação','<p id="hiSt" class="sm">A ler…</p><div class="prog"><i id="hiPb" style="width:0%"></i></div>',[{l:'Cancelar',fn:()=>closeModal(2)}],2); const prog=t=>{ const e=st.querySelector('#hiSt'); if(e) e.textContent=t; };
+  const props=[]; let fi=0;
+  for(const f of files){ fi++; const pb=st.querySelector('#hiPb'); if(pb) pb.style.width=Math.round(100*fi/files.length)+'%'; prog('A ler '+f.name+' ('+fi+' de '+files.length+')…');
+    let text='',tabs=[]; try{ tabs=await readTables(f,prog); }catch(e){} try{ text=await extractText(f,prog); }catch(e){}
+    if(!text&&/^image\//.test(f.type)){ try{ text=await ocr(f,prog); }catch(e){} }
+    if(!text&&f.name.toLowerCase().endsWith('.pdf')){ try{ text=await pdfText(f,prog); }catch(e){} }
+    const kinds=docKind(f.name,text||tabs.map(t=>t.rows.map(r=>r.join(' ')).join(' ')).join(' '));
+    props.push({f,kind:'arquivo',tipoG:guessTipo(f.name+' '+kinds.join(' ')),label:'Arquivar em Documentos e legislação ('+guessTipo(f.name+' '+kinds.join(' '))+')',on:true,run:async(tp)=>{ const id=uid(); await FDB.put(id,f); if(text) await FDB.put('t:'+id,text).catch(()=>{}); D('documentos').push({id:uid(),_c:nowLocal(),_imp:1,titulo:f.name.replace(/\.[^.]+$/,''),tipo:tp||guessTipo(f.name+' '+kinds.join(' ')),data:today(),docs:[{id,name:f.name,type:f.type,size:f.size}]}); return 'arquivado'; }});
+    let usedTables=new Set();
+    tabs.forEach((t,ti)=>{ const pcc=parsePccTable(t.rows); if(pcc){ usedTables.add(ti); props.push({f,kind:'pcc',label:pcc.length+' PCC → Análise de perigos ('+pcc.map(x=>x.etapa).slice(0,4).join(', ')+(pcc.length>4?'…':'')+')',on:true,data:pcc}); return; }
+      const hz=parseHazTable(t.rows); if(hz){ usedTables.add(ti); props.push({f,kind:'perigos',label:hz.length+' perigo(s) → Análise de perigos',on:true,data:hz}); } });
+    const steps=(kinds.includes('fluxo')||kinds.includes('haccp'))?parseSteps(text):[];
+    if(steps.length>=3) props.push({f,kind:'fluxo',label:steps.length+' etapas → Fluxograma: '+steps.slice(0,5).join(' › ')+(steps.length>5?'…':''),on:true,data:steps});
+    tabs.forEach((t,ti)=>{ if(usedTables.has(ti)) return; const c=classifyTable(t.name,t.rows); const data=t.rows.slice(c.hi+1).filter(r=>r.some(x=>String(x).trim())).length; if(!data) return;
+      const def=c.key||(kinds.includes('registo')?'__modelo':''); const sure=!!c.key&&c.score>=6;
+      props.push({f,kind:'tabela',ask:true,sure,def,label:'Tabela «'+t.name+'» ('+data+' linhas: '+(c.head||[]).slice(0,5).join(', ')+')',on:true,key:c.key,tab:t}); });
+    const onlyArch=!props.some(p=>p.f===f&&p.kind!=='arquivo');
+    if(text&&onlyArch) props.push({f,kind:'texto',ask:true,sure:false,def:kinds.includes('registo')?'modelo':kinds.includes('fluxo')?'fluxo':'',label:'Texto sem tabelas reconhecidas'+(kinds.length?' (parece: '+kinds.join(', ')+')':''),on:true,text}); }
+  closeModal(2); if(!props.length){ toast('Não encontrei conteúdo para importar'); return; }
+  const procs=[...new Set(D('etapas').map(e=>e.processo))];
+  const body='<p class="sm">Encontrei isto. Desmarque o que não quer. As tabelas para registos/planos abrem a seguir para confirmar as colunas.</p>'+
+    '<label class="sm" style="display:flex;gap:8px;align-items:center;margin:0 0 8px"><input type="checkbox" id="hiOnly" checked style="width:auto"> Nas etapas com perigos importados, usar só os perigos do documento (desativa os sugeridos pela app — pode reativá-los)</label>'+
+    '<label class="f"><span>Processo / linha onde colocar as etapas e perigos importados</span><input id="hiProc" list="hiProcs" value="'+esc(procs[0]||'Principal')+'"><datalist id="hiProcs">'+procs.map(p=>'<option value="'+esc(p)+'">').join('')+'</datalist></label>'+
+    [...new Set(props.map(p=>p.f))].map(f=>'<div class="card sm" style="margin:8px 0;padding:10px 12px"><b>'+esc(f.name)+'</b>'+props.filter(p=>p.f===f).map(p=>{ const i=props.indexOf(p);
+      if(p.kind==='arquivo') return '<label style="display:flex;gap:8px;align-items:center;padding:5px 0;flex-wrap:wrap"><input type="checkbox" data-pi="'+i+'" checked style="width:auto"> <span>Arquivar em Documentos como</span><select data-ask="'+i+'" style="max-width:200px">'+DOC_TIPOS.map(t=>'<option'+(t===p.tipoG?' selected':'')+'>'+t+'</option>').join('')+'</select></label>';
+      if(p.ask){ const opts=p.kind==='texto'?[['','— só arquivar —'],['fluxo','Fluxograma (cada linha é uma etapa)'],['modelo','Modelo de registo (cada linha é um item a verificar)']]:[['','— não importar —'],['__modelo','Modelo de registo (é um impresso)'],...HACCP_DEST().map(k=>[k,M[k].t])];
+        return '<div style="padding:6px 0;border-top:1px dashed var(--line)"><label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" data-pi="'+i+'" checked style="width:auto;margin-top:3px"> <span>'+esc(p.label)+'</span></label>'+(!p.sure?'<div class="alert warn" style="margin:4px 0"><i>?</i><span>'+(p.def?'Não tenho a certeza — confirme o destino:':'Não sei onde colocar — escolha o destino:')+'</span></div>':'')+'<select data-ask="'+i+'" style="margin-top:4px">'+opts.map(([v,l])=>'<option value="'+v+'"'+(v===p.def?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select></div>'; }
+      return '<label style="display:flex;gap:8px;align-items:flex-start;padding:5px 0"><input type="checkbox" data-pi="'+i+'" checked style="width:auto;margin-top:3px"> <span>'+esc(p.label)+'</span></label>'; }).join('')+'</div>').join('');
+  modal('Importar a documentação HACCP',body,[{l:'Cancelar',fn:()=>closeModal(1)},{l:'Importar selecionados',c:'p',fn:async r=>{ const sel=[...r.querySelectorAll('[data-pi]:checked')].map(x=>props[+x.dataset.pi]); const proc=r.querySelector('#hiProc').value.trim()||'Principal'; closeModal(1);
+    r.querySelectorAll('[data-ask]').forEach(x=>{ const p=props[+x.dataset.ask]; p.choice=x.value; });
+    sel.forEach(p=>{ if(p.kind==='tabela'){ if(p.choice==='__modelo'){ p.kind='modelo'; } else if(p.choice){ p.key=p.choice; } else p.kind='skip'; }
+      if(p.kind==='texto'){ if(p.choice==='fluxo'){ p.kind='fluxo'; p.data=String(p.text).split(/\n+/).map(x=>x.replace(/^\s*\d+\s*[.)\-–:]\s*/,'').trim()).filter(x=>x.length>=3&&x.length<=70&&!/fluxograma|diagrama|^etapas|linha de|processo de fabrico|^pagina|^data\b/i.test(norm(x))).slice(0,40); } else if(p.choice==='modelo') p.kind='modelo'; else p.kind='skip'; } });
+    const ORD={arquivo:0,fluxo:1,perigos:2,pcc:3,modelo:4,tabela:5,skip:9}; sel.sort((a,b)=>ORD[a.kind]-ORD[b.kind]); const only=r.querySelector('#hiOnly').checked; const touched=new Set();
+    const res={arquivo:0,etapas:0,pcc:0,perigos:0,modelos:0}; const queue=[];
+    for(const p of sel){ try{
+      if(p.kind==='arquivo'){ await p.run(p.choice); res.arquivo++; }
+      else if(p.kind==='fluxo'){ p.data.forEach(n=>{ if(!findEtapa(n,proc)){ ensureEtapa(n,proc); res.etapas++; } }); }
+      else if(p.kind==='pcc'){ p.data.forEach(h=>{ const e=ensureEtapa(h.etapa,proc); touched.add(e.id); importHazard(e,h,true); res.pcc++; }); }
+      else if(p.kind==='perigos'){ p.data.forEach(h=>{ if(!h.etapa) return; const e=ensureEtapa(h.etapa,proc); touched.add(e.id); importHazard(e,h,false); res.perigos++; }); }
+      else if(p.kind==='modelo'){ const md=p.tab?modeloFromTable(p.tab.rows,p.f.name.replace(/\.[^.]+$/,'')):modeloFromLines(p.text.split('\n'),p.f.name.replace(/\.[^.]+$/,'')); if(md.campos.length){ D('modelos').push({id:uid(),_c:nowLocal(),_imp:1,nome:md.nome,sector:'Específico da empresa',frequencia:'Diária',itens:md.itens,ativo:'Sim',campos:md.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min||'',max:c.max||'',opcoes:c.opcoes||''}))}); res.modelos++; } }
+      else if(p.kind==='tabela') queue.push(p);
+    }catch(e){ toast(p.f.name+': '+(e.message||e),6000); } }
+    if(only&&touched.size) computeHA().rows.filter(x=>x.src==='kb'&&touched.has(x.etapa.id)).forEach(x=>{ S.ha.ov[x.key]={...(S.ha.ov[x.key]||{}),na:true}; });
+    save(); render();
+    const msg='Importado: '+[res.arquivo&&res.arquivo+' documento(s) arquivado(s)',res.etapas&&res.etapas+' etapa(s)',res.pcc&&res.pcc+' PCC',res.perigos&&res.perigos+' perigo(s)',res.modelos&&res.modelos+' modelo(s) de registo'].filter(Boolean).join(' · ');
+    if(queue.length){ toast(msg+(msg?' — ':'')+'a seguir: confirmar '+queue.length+' tabela(s)',6000); IMPORT_RUN=uid(); let i=0; const next=()=>{ if(i>=queue.length){ IMPORT_RUN=null; toast('Importação concluída. Reveja a Análise de perigos e o Fluxograma.',7000); return; } const x=queue[i++]; importTable(x.key,null,{sheets:{[x.f.name+' › '+x.tab.name]:x.tab.rows},name:x.f.name+' › '+x.tab.name+' ('+i+' de '+queue.length+')',after:next}); }; next(); }
+    else { toast((msg||'Nada importado')+'. Reveja a Análise de perigos e o Fluxograma.',8000); if(res.pcc||res.perigos||res.etapas) location.hash='#/analise'; } }}],1); }; inp.click(); }
 /* ---------- Pré-visualizar Word / Excel ---------- */
 async function previewFile(blob,name){
   const n=(name||'').toLowerCase(); let html='';
@@ -2193,8 +2513,9 @@ async function previewFile(blob,name){
 }
 
 /* ---------- Importar documentos existentes ---------- */
-const DOC_TIPOS=['Procedimento','Instrução de trabalho','Impresso / registo','Ficha técnica','Ficha de segurança','Legislação','Certificado','Outro'];
+const DOC_TIPOS=['Plano HACCP / plano','Procedimento','Instrução de trabalho','Impresso / registo','Ficha técnica','Ficha de segurança','Legislação','Certificado','Outro'];
 function guessTipo(n){ n=norm(n);
+  if(/haccp|plano de|fluxograma|analise de perigos|\bpcc\b|perigos|plano\b/.test(n)) return 'Plano HACCP / plano';
   if(/\b(reg|regulamento|decreto|dl|lei|portaria|diretiva)\b/.test(n)) return 'Legislação';
   if(/\bfds\b|ficha de seguranca|ficha dados seguranca/.test(n)) return 'Ficha de segurança';
   if(/ficha tecnica|\bft\b|especificac/.test(n)) return 'Ficha técnica';
@@ -2216,12 +2537,13 @@ function viewImportar(){
    '<input type="file" id="idFiles" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ods,.csv,.txt,image/*"><div class="grid" style="margin-top:10px"><label class="f"><span>Tipo</span><select id="idTipo"><option value="">Automático (pelo nome do ficheiro)</option>'+DOC_TIPOS.map(t=>'<option>'+t+'</option>').join('')+'</select></label>'+
    '<label class="f"><span>Próxima revisão (opcional)</span><input type="date" id="idRev"></label></div><label class="sm" style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><input type="checkbox" id="idTxt" checked style="width:auto"> Extrair texto para pesquisa</label>'+
    '<button class="btn p" id="idGo">Importar documentos</button><div id="idLog" class="sm" style="margin-top:10px"></div></div>':'')+
+   (mods.length?'<div class="card" style="border:2px solid var(--pri)"><b>Importar o HACCP que a empresa já tem</b><p class="sm mut">Escolha os ficheiros — um a um ou todos de uma vez (plano HACCP, análise de perigos, fluxograma, planos de higienização, pragas, análises, manutenção, formação, listas de fornecedores e equipamentos, impressos de registo, procedimentos). Aceita PDF, Word, Excel e fotos/digitalizações. A app lê cada documento, mostra o que encontrou e coloca cada coisa no sítio certo: etapas no fluxograma, perigos e PCC (com limites, monitorização e ações corretivas) na análise de perigos, tabelas nos planos e registos, impressos como modelos de registo, e arquiva todos os originais.</p><button class="btn p" id="hiGo">Escolher ficheiros do HACCP</button></div>':'')+
    (mods.length?'<div class="card"><b>Importação inteligente (recomendado)</b><p class="sm mut">Escolha um ou vários ficheiros Excel (todas as folhas), Word (tabelas) ou PDF. A app analisa cada folha/tabela e sugere onde importar: listas de equipamentos, planos de manutenção e calibração (com o que fazer em cada um), planos de análises, higienização, fornecedores, clientes, colaboradores, formação, matérias-primas…</p><button class="btn p" id="smGo">Escolher ficheiros e analisar</button></div>':'')+
    (mods.length?'<div class="card"><b>2. Importar dados de Excel ou CSV para um registo</b><p class="sm mut">Ex.: lista de fornecedores, colaboradores ou matérias-primas, folhas antigas de temperaturas, plano de higienização. A seguir escolhe que coluna corresponde a cada campo.</p>'+
    '<div class="grid"><label class="f"><span>Importar para</span><select id="itMod">'+mods.map(k=>'<option value="'+k+'">'+esc(M[k].t)+'</option>').join('')+'</select></label><label class="f"><span>Ficheiro (.xlsx, .xls, .csv)</span><input type="file" id="itFile" accept=".xlsx,.xls,.ods,.csv"></label></div></div>':'')+
    '<div class="card"><b>3. Pesquisar no conteúdo dos documentos</b><div class="row" style="margin-top:8px"><input id="isQ" type="search" placeholder="Ex.: Listeria, cloro, devolução…" style="max-width:360px"><button class="btn" id="isGo">Pesquisar</button></div><div id="isRes" style="margin-top:8px"></div></div>';
 }
-function bindImportar(){ const sg=document.getElementById('smGo'); if(sg) sg.onclick=smartImport;
+function bindImportar(){ const sg=document.getElementById('smGo'); if(sg) sg.onclick=smartImport; const hg=document.getElementById('hiGo'); if(hg) hg.onclick=haccpImport;
   const go=document.getElementById('idGo');
   if(go) go.onclick=async()=>{ const files=[...document.getElementById('idFiles').files]; if(!files.length){ toast('Escolha os ficheiros'); return; }
     const tipo=document.getElementById('idTipo').value, rev=document.getElementById('idRev').value, txt=document.getElementById('idTxt').checked, log=document.getElementById('idLog'); go.disabled=true; let ok=0;
@@ -2244,6 +2566,7 @@ async function searchDocs(q){ const out=document.getElementById('isRes'); const 
   out.querySelectorAll('[data-doc]').forEach(el=>el.onclick=()=>openForm('documentos',el.dataset.doc)); }
 
 /* ---------- Ligações de eventos ---------- */
+function bindPlanoMail(){ const b=document.getElementById('plMail'); if(b) b.onclick=()=>{ const v=document.getElementById('view').cloneNode(true); v.querySelectorAll('.noprint,.crumb,details.help,#pgDocs').forEach(x=>x.remove()); shareDoc({html:v.innerHTML,name:'Plano HACCP '+(S.empresa.nome||'')+'.pdf',subject:'Plano HACCP — '+(S.empresa.nome||'')}); }; }
 function bindView(key){
   const v=document.getElementById('view');
   v.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>{ location.hash='#/'+el.dataset.go; }));
@@ -2262,6 +2585,9 @@ function bindView(key){
     if(b('newscan')) b('newscan').onclick=()=>{ const r=openForm('rececao'); openScanner((code,msg)=>applyScan(r,code,msg),true); };
     if(b('tempall')) b('tempall').onclick=tempAll;
     if(b('proddia')) b('proddia').onclick=prodDia;
+    if(b('guiaMulti')) b('guiaMulti').onclick=()=>{ const pend=D('residuos').filter(x=>x.estadoSP!=='Expedido'&&!x.guia); if(!pend.length){ toast('Não há saídas em armazenagem'); return; }
+      const cats=[...new Set(pend.map(spCatOfRes))]; const root=modal('Emitir guia','<p class="sm">Escolha as saídas a incluir (da mesma categoria).</p>'+cats.map(c=>'<h3 style="margin:10px 0 4px">'+esc(c)+'</h3>'+pend.filter(x=>spCatOfRes(x)===c).map(x=>'<label style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-gr="'+x.id+'" data-cat="'+esc(c)+'" style="width:auto"> '+fDate(x.data)+' · '+esc(lbl('materias',x.materia)||x.tipo)+' · '+esc(x.quantidade)+' '+esc(x.unidade||'')+(x.lote?' · lote '+esc(x.lote):'')+'</label>').join('')).join(''),
+        [{l:'Cancelar',fn:()=>closeModal(1)},{l:'Continuar',c:'p',fn:r=>{ const sel=[...r.querySelectorAll('[data-gr]:checked')]; if(!sel.length){ toast('Escolha pelo menos uma'); return; } if(new Set(sel.map(x=>x.dataset.cat)).size>1){ toast('Uma guia só pode ter uma categoria'); return; } closeModal(1); openGuiaFrom(sel.map(x=>x.dataset.gr)); }}],1); };
     if(b('smart')) b('smart').onclick=smartImport;
     if(b('gen')) b('gen').onclick=()=>genPick(key);
     if(b('blank')) b('blank').onclick=()=>key==='modelos'||key==='registos'?pickBlankModelo():printBlank(key);
@@ -2269,6 +2595,7 @@ function bindView(key){
     if(b('modimp')) b('modimp').onclick=()=>{ const i=document.createElement('input'); i.type='file'; i.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf,image/*'; i.onchange=()=>{ if(i.files[0]) importModelo(i.files[0]); }; i.click(); };
     const q=v.querySelector('#q'); if(q) q.oninput=()=>{ const ws=norm(q.value).split(' ').filter(Boolean); let n=0; v.querySelectorAll('tbody tr[data-id]').forEach(tr=>{ const ok=ws.every(w=>(tr.dataset.s||'').includes(w)); tr.style.display=ok?'':'none'; if(ok) n++; }); const c=v.querySelector('#qCnt'); if(c) c.textContent=ws.length?n+' resultado(s)':''; };
   }
+  if(key==='plano') bindPlanoMail();
   ({codLotes:bindCodLotes,aparencia:bindAparencia,sync:bindSync,menu:bindMenu,regularidade:bindRegularidade,arquivo:bindArquivo,painel:bindPainel,empresa:bindEmpresa,analise:bindAnalise,dados:bindDados,rastreio:bindRastreio,assistente:bindAssistente,stock:bindStock,importar:bindImportar,utilizadores:bindUtilizadores,inspecao:bindInspecao}[key]||(()=>{}))();
 }
 
@@ -2470,6 +2797,7 @@ function pccTable(pccs,clickable){
 function viewAnalise(){
   const {rows,pccs,lim}=computeHA(); const gaps=haGaps(); const cnt=k=>rows.filter(r=>r.cls===k).length;
   let h='<h1>Análise de perigos e PCC</h1><p class="sub">Gerada automaticamente a partir dos sectores, fluxograma, matérias-primas, receitas e produtos. Toque numa linha para ajustar.</p>';
+  if(lvl('analise')>=3) h+='<div class="row noprint" style="margin-bottom:10px"><button class="btn" id="haImp" style="white-space:normal;text-align:left">Importar o HACCP existente (PDF, Word, Excel, digitalização)</button></div>';
   h+='<div class="kpis"><div class="kpi"><b>'+rows.filter(r=>!r.na).length+'</b><span>Perigos avaliados</span></div><div class="kpi"><b>'+rows.filter(r=>r.sig&&!r.na).length+'</b><span>Significativos (≥ '+lim+')</span></div><div class="kpi"><b style="color:var(--bad)">'+pccs.length+'</b><span>PCC</span></div><div class="kpi"><b style="color:var(--warn)">'+cnt('PPRO')+'</b><span>PPR operacionais</span></div></div>';
   if(gaps.length) h+='<div class="card"><b>Lacunas que afetam a análise</b><div style="margin-top:8px">'+gaps.map(g=>'<div class="alert warn" data-go="'+g.k+'"><i>!</i><span>'+esc(g.t)+'</span></div>').join('')+'</div></div>';
   h+='<div class="card sm"><b>Metodologia.</b> Risco = Probabilidade (1 baixa · 2 média · 3 alta) × Gravidade (1 baixa · 2 média · 3 alta). Significativo se risco ≥ '+lim+'. Os significativos passam pela árvore de decisão do Codex Alimentarius: '+
@@ -2480,7 +2808,7 @@ function viewAnalise(){
   h+='<div class="row noprint" style="margin-top:14px"><a class="btn p" href="#/plano">Ver plano HACCP completo</a><button class="btn" data-go="pccRegisto">Registar monitorização</button></div>';
   return h;
 }
-function bindAnalise(){
+function bindAnalise(){ const hi=document.getElementById('haImp'); if(hi) hi.onclick=haccpImport;
   const v=document.getElementById('view'); const ha=computeHA();
   if(lvl('analise')<3){ const a=document.getElementById('addHz'); if(a) a.remove(); return; }
   v.querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>editHazard(ha.rows.find(r=>r.key===tr.dataset.k)));
@@ -2598,7 +2926,7 @@ function viewAlergenios(){
 function viewPlano(){
   const E=S.empresa; const {rows,pccs}=computeHA();
   const t=(heads,data)=>'<div class="tw"><table><thead><tr>'+heads.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+(data.length?data.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+heads.length+'" class="mut">Sem registos.</td></tr>')+'</tbody></table></div>';
-  let h='<div class="row noprint"><div class="sp"><h1>Plano HACCP</h1><p class="sub">Documento compilado automaticamente. Use «Imprimir» e escolha «Guardar como PDF».</p></div><button class="btn p" data-print>Imprimir / PDF</button></div>';
+  let h='<div class="row noprint"><div class="sp"><h1>Plano HACCP</h1><p class="sub">Documento compilado automaticamente. Use «Imprimir» e escolha «Guardar como PDF».</p></div><button class="btn p" data-print>Imprimir / PDF</button><button class="btn" id="plMail">✉ Enviar por email</button></div>';
   h+='<div class="card">'+(logoTag(80)?'<div style="margin-bottom:10px">'+logoTag(80)+'</div>':'')+'<h1 style="font-size:26px">Plano HACCP</h1><p style="font-size:17px;margin:4px 0 14px"><b>'+esc(E.nome||'— nome da empresa —')+'</b></p><table style="max-width:680px"><tbody>'+
     [['NIF',E.nif],['Morada',E.morada],['Sectores',(E.sectores||[]).map(s=>SECT[s]?SECT[s].n:s).join(', ')],['Atividade',E.atividade],['CAE',E.cae],['Nº controlo / registo',E.controlo],['Responsável',E.responsavel],['Contactos',[E.telefone,E.email].filter(Boolean).join(' · ')],['Versão',E.versao],['Data de aprovação',fDate(E.dataPlano)],['Data de emissão',fDate(today())]]
     .filter(x=>x[1]).map(x=>'<tr><th style="width:200px">'+x[0]+'</th><td>'+esc(x[1])+'</td></tr>').join('')+'</tbody></table>'+(E.ambito?'<p><b>Âmbito:</b> '+esc(E.ambito)+'</p>':'')+'</div>';
@@ -2690,12 +3018,13 @@ function bindRastreio(){
     if(t.recL.length) h+='<div class="card"><h2 style="margin-top:0">Lote de matéria-prima — origem e utilização</h2>'+T(['Data','Fornecedor','Documento','Matéria-prima','Lote','Validade','Recebido','Usado','Disponível'],t.recL.map(({r,l})=>{ const st=t.lotById[l.id]||{}; return '<tr data-m="rececao" data-id="'+r.id+'"><td>'+fDate(r.data)+'</td><td>'+esc(lbl('fornecedores',r.fornecedor))+'</td><td>'+esc(r.documento||'')+'</td><td>'+esc(lbl('materias',l.materia))+'</td><td>'+esc(l.loteInt?l.loteInt+' (forn.: '+(l.lote||'—')+')':l.lote)+'</td><td>'+fDate(l.validade)+'</td><td>'+esc(l.qtd)+'</td><td>'+rnd(st.used||0)+'</td><td>'+(st.disp??'')+'</td></tr>'; }))+'</div>';
     if(t.usedBy.length) h+='<div class="card"><h2 style="margin-top:0">Para a frente — produções que usaram este lote</h2>'+T(['Data','Produto','Lote produzido','Quantidade usada','Clientes'],t.usedBy.map(p=>{ const q2=(p.consumos||[]).filter(c=>String(c.lote||'').toLowerCase().includes(t.q)).reduce((a,c)=>a+c.qtd,0); return '<tr><td>'+fDate(p.data)+'</td><td>'+esc(lbl('produtos',p.produto))+'</td><td><a href="#" data-tr="'+esc(p.lote)+'"><b>'+esc(p.lote)+'</b></a></td><td>'+rnd(q2)+'</td><td>'+(expOfLot(p.id).map(x=>esc(lbl('clientes',x.e.cliente))+' ('+x.l.qtd+')').join(', ')||esc(p.destino||'—'))+'</td></tr>'; }))+'</div>';
     if(!t.prods.length&&!t.recL.length&&!t.usedBy.length) h+='<div class="card empty">Lote não encontrado.</div>';
-    h+='<div class="row noprint"><button class="btn" data-print>Imprimir relatório de rastreabilidade</button></div>';
+    h+='<div class="row noprint"><button class="btn" data-print>Imprimir relatório de rastreabilidade</button><button class="btn" id="rMail">✉ Enviar relatório</button></div>';
     out.innerHTML=h;
     out.querySelectorAll('tr[data-m]').forEach(tr=>tr.onclick=()=>openForm(tr.dataset.m,tr.dataset.id));
     out.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.open.split('|'); openForm(k,id); });
     out.querySelectorAll('[data-tr]').forEach(a=>a.onclick=e=>{ e.preventDefault(); document.getElementById('rq').value=a.dataset.tr; go(); window.scrollTo(0,0); });
     out.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>window.print());
+    const rm=out.querySelector('#rMail'); if(rm) rm.onclick=()=>shareDoc({html:docHead('Relatório de rastreabilidade','Lote: '+esc(t.q)+' · '+fDate(nowLocal()))+out.innerHTML,name:'Rastreabilidade '+t.q+'.pdf',subject:'Relatório de rastreabilidade — lote '+t.q+' — '+(S.empresa.nome||'')});
   };
   document.getElementById('rgo').onclick=go; document.getElementById('rq').onkeydown=e=>{ if(e.key==='Enter') go(); };
   document.getElementById('rscan').onclick=()=>openScanner(code=>{ const p=parseCode(code); document.getElementById('rq').value=p.lote||p.texto||p.gtin||code; go(); },false);
@@ -2735,14 +3064,18 @@ function viewPainel(){
   const last30=[...D('temperaturas'),...D('pccRegisto'),...D('rececao'),...D('controlos'),...D('registos')].filter(r=>daysTo((r.dt||r.data||'').slice(0,10))>=-30&&r.conforme);
   const pct=last30.length?Math.round(100*last30.filter(r=>r.conforme==='Conforme').length/last30.length):null;
   const ncA=D('nc').filter(n=>n.estado!=='Fechada').length; const ch=implChecks(); const impl=Math.round(100*ch.filter(x=>x.ok).length/ch.length);
-  let h=(tabletMode()?'<div class="row noprint" style="margin-bottom:8px"><a class="btn p" href="#/menu">▦ Menu</a></div>':'')+'<h1>Painel</h1><p class="sub">'+esc(S.empresa.nome||'')+' · '+new Date().toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p>';
+  let h='<h1>Painel</h1><p class="sub">'+esc(S.empresa.nome||'')+' · '+new Date().toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p>';
   h+='<div class="kpis"><div class="kpi" data-go="nc"><b style="color:'+(ncA?'var(--bad)':'var(--ok)')+'">'+ncA+'</b><span>NC abertas</span></div><div class="kpi" data-go="temperaturas"><b>'+recHoje+'</b><span>Registos hoje</span></div>'+
      '<div class="kpi" data-go="pccRegisto"><b>'+(pct==null?'—':pct+'%')+'</b><span>Conformidade (30 dias)</span></div><div class="kpi" data-go="assistente"><b>'+impl+'%</b><span>Implementação HACCP</span></div></div>';
-  const QT=(attr,k,l,c1,c2)=>'<button class="mtile" '+attr+' style="border:0;cursor:pointer;background:linear-gradient(135deg,'+c1+','+c2+')">'+semDot(k)+'<span class="mic">'+(ICON[k]||'•')+'</span><span class="ml">'+esc(l)+'</span></button>';
-  h+='<h2 style="margin:6px 0 10px">Registo rápido</h2><div class="mgrid" style="margin-bottom:16px">'+QT('id="qTemp"','temperaturas','Temperaturas','#0e7490','#06b6d4')+QT('id="qScan"','rececao','Receção por leitura','#c2410c','#f97316')+QT('data-new="rececao"','rececao','Receção','#c2410c','#f97316')+
+  const QT=(attr,k,l)=>'<button type="button" class="ntile big" '+attr+'>'+semDot(k)+'<span class="nic">'+(ICON[k]||'•')+'</span><span class="nl">'+esc(l)+'</span></button>';
+  h+='<div class="card"><b>Registo rápido</b><div class="qgrid" style="margin-top:10px">'+QT('id="qTemp"','temperaturas','Temperaturas','#0e7490','#06b6d4')+QT('id="qScan"','rececao','Receção por leitura','#c2410c','#f97316')+QT('data-new="rececao"','rececao','Receção','#c2410c','#f97316')+
     QT('data-new="lotes"','lotes','Produção','#9a3412','#ea580c')+QT('id="qProdDia"','lotes','Produção do dia','#9a3412','#ea580c')+(D('modelos').some(x=>x.ativo!=='Não')?QT('data-new="registos"','registos','Outros registos','#0e7490','#06b6d4'):'')+
     (D('paramControlo').length?QT('data-new="controlos"','controlos','Controlo específico','#0e7490','#06b6d4'):'')+QT('data-new="higRegisto"','higRegisto','Higienização','#0e7490','#06b6d4')+QT('data-new="epiEntregas"','epiEntregas','Entrega de EPI','#be185d','#ec4899')+
-    (ha.pccs.length?QT('data-new="pccRegisto"','pccRegisto','PCC','#15803d','#22c55e'):'')+QT('data-new="expedicoes"','expedicoes','Expedição','#9a3412','#ea580c')+QT('data-new="nc"','nc','Não conformidade','#b91c1c','#ef4444')+'</div>';
+    (ha.pccs.length?QT('data-new="pccRegisto"','pccRegisto','PCC','#15803d','#22c55e'):'')+QT('data-new="expedicoes"','expedicoes','Expedição','#9a3412','#ea580c')+QT('data-new="nc"','nc','Não conformidade','#b91c1c','#ef4444')+'</div></div>';
+  const GR=NAV.map(([g,items])=>[g,items.map(it=>Array.isArray(it)?it[0]:it).filter(k=>lvl(k)>=1)]).filter(([g,its])=>its.length&&g!=='Início');
+  h+='<div class="card"><div class="row"><b class="sp">Menus</b><span class="sm mut"><i class="sem s-ok sdot"></i> em dia <i class="sem s-warn sdot"></i> a aproximar-se <i class="sem s-bad sdot"></i> em atraso</span></div><div class="ngrid" style="margin-top:10px">'+
+    GR.map(([g,its])=>{ const sg=semGroup(its); return '<a class="ntile" href="#/menu/'+encodeURIComponent(g)+'">'+(sg?'<i class="sem s-'+sg+'"></i>':'')+'<span class="nic">'+((GRP_STYLE[g]||[])[2]||'📁')+'</span><span class="nl">'+esc(g)+'</span><small class="nsub">'+its.length+' opções</small></a>'; }).join('')+
+    '<a class="ntile" href="#/menu/'+encodeURIComponent('Início')+'"><span class="nic">🏠</span><span class="nl">Início / configuração</span></a></div></div>';
   const tk=todayTasks(); PAINEL_TASKS=tk; const nd=tk.filter(x=>x.done).length;
   if(tk.length) h+='<div class="card"><div class="row"><b class="sp">Para fazer hoje</b><span class="sm '+(nd===tk.length?'':'mut')+'">'+nd+' de '+tk.length+' feitas</span></div><div class="prog"><i style="width:'+Math.round(100*nd/tk.length)+'%"></i></div>'+
     tk.map((x,i)=>'<div class="todo'+(x.done?' done':'')+(x.late&&!x.done?' late':'')+'"><span class="ck">'+(x.done?'✓':'')+'</span><span class="tt">'+esc(x.t)+(x.sub?'<small>'+esc(x.sub)+'</small>':'')+'</span>'+(!x.done&&x.can?'<button class="btn '+(x.late?'p':'')+'" data-task="'+i+'">Registar</button>':'')+'</div>').join('')+'</div>';
@@ -2767,6 +3100,9 @@ function todayTasks(){ const hoje=today(); const T=[];
   return T.filter(x=>lvl(x.k)>=1); }
 function pendentes(){ const P=[]; const add=(lvl_,t,k,id)=>{ if(lvl(k)>=1) P.push({lvl:lvl_,t,k,id}); };
   missingData().forEach(x=>add('warn',x.t,x.k,x.id));
+  D('guiasSP').filter(g=>g.estadoG==='Rascunho'&&(!g.destinatario||(/^Subproduto animal/.test(g.categoria||'')&&!g.transportador))).forEach(g=>add('warn','Guia '+g.numero+' ('+(g.material||'')+') — escolha o recetor/destinatário','guiasSP',g.id));
+  D('guiasSP').filter(g=>g.estadoG==='Rascunho'&&g.destinatario).forEach(g=>add('warn','Guia '+g.numero+' pronta ('+(g.material||'')+', '+g.quantidade+' '+(g.unidade||'')+') — imprimir/enviar e marcar como expedida','guiasSP',g.id));
+  D('materias').filter(m=>m.tipo==='Subproduto / resíduo'&&m.catSP&&m.catSP!=='Reutilizado internamente (não sai da empresa)'&&!m.recetorPrinc&&!(m.recetores||[]).length).forEach(m=>add('warn','Subproduto «'+m.nome+'» sem recetor atribuído','materias',m.id));
   if(!S.empresa.regraLote&&(D('produtos').length||D('receitas').length)) add('warn','Defina a codificação dos lotes (Produção e stock › Definições de lotes) — até lá é usado {COD}{AA}{MM}{DD}','codLotes');
   D('nc').filter(n=>n.estado!=='Fechada').forEach(n=>{ const late=n.prazo&&daysTo(n.prazo)<0; add(late||n.gravidade==='Crítica'?'danger':'warn','NC '+(n.estado||'Aberta').toLowerCase()+(late?' — prazo ultrapassado':'')+': '+String(n.descricao||'').slice(0,90),'nc'); });
   D('reclamacoes').filter(r=>r.estado!=='Fechada').forEach(r=>add('warn','Reclamação por fechar: '+(r.cliente||'')+(r.descricao?' — '+String(r.descricao).slice(0,60):''),'reclamacoes'));
@@ -2932,7 +3268,7 @@ async function hashPw(pw,salt){ const data=new TextEncoder().encode(salt+'|'+pw)
 async function mkUser(nome,login,pw,perfil,perms){ const salt=uid(); return {id:uid(),nome,login,perfil,ativo:'Sim',perms:perms||{},salt,hash:await hashPw(pw,salt)}; }
 const allTo=n=>()=>Object.fromEntries(navItems().map(x=>[x.k,n]));
 const PRESETS={
- 'Operador de produção':()=>({expedicoes:2,clientes:1,registos:2,modelos:1,visitantes:2,temperaturas:2,higRegisto:2,controlos:2,pccRegisto:2,lotes:2,rececao:2,receitas:1,stock:1,ajustes:2,nc:2,produtos:1,materias:1,documentos:1}),
+ 'Operador de produção':()=>({residuos:2,guiasSP:2,expedicoes:2,clientes:1,registos:2,modelos:1,visitantes:2,temperaturas:2,higRegisto:2,controlos:2,pccRegisto:2,lotes:2,rececao:2,receitas:1,stock:1,ajustes:2,nc:2,produtos:1,materias:1,documentos:1}),
  'Receção / armazém':()=>({rececao:2,stock:1,ajustes:2,materias:1,fornecedores:1,temperaturas:2,nc:2,rastreio:1,documentos:1}),
  'Qualidade / HACCP':()=>({...allTo(3)(),dados:0,utilizadores:0}),
  'RH / segurança no trabalho':()=>({colaboradores:3,formacao:3,epiEntregas:3,epis:3,documentos:1,importar:2}),
