@@ -49,6 +49,22 @@ nav .grp a:hover{background:rgba(31,74,61,.10)}
 body.locked .tnav{display:none!important}
 .crumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:13px;color:var(--mut)}
 .crumb .btn{padding:5px 10px;font-size:13px}
+nav .grp h6{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:14px;user-select:none}
+nav .grp h6::after{content:'▸';font-size:12px}
+nav .grp.open h6::after{content:'▾'}
+nav .grp:not(.open) a{display:none}
+.todo{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;margin:6px 0;background:var(--card)}
+.todo .ck{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--mut);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.todo.done{opacity:.6}.todo.done .ck{background:var(--ok);border-color:var(--ok);color:#fff}.todo.done .tt{text-decoration:line-through}
+.todo.late .ck{border-color:var(--bad)}
+.todo .tt{flex:1;min-width:0;font-size:14px}.todo .tt small{display:block;color:var(--mut);font-size:12px}
+.todo .btn{padding:6px 12px;font-size:13px}
+.prog{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0 4px}.prog>i{display:block;height:100%;background:var(--ok)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile:nth-child(odd){background:#eef1f3}@media (prefers-color-scheme:dark){.tile:nth-child(odd){background:#1f2a27}}
+.tile h4{margin:0 0 6px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}
+.tile a{display:block;padding:5px 0;color:var(--ink);text-decoration:none;font-size:14px;border-top:1px solid var(--line)}.tile a:first-of-type{border-top:0}
 .top>div:not(#tUser){min-width:0;flex:1 1 auto;overflow:hidden}
 .top>div:not(#tUser) b,.top>div:not(#tUser) small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:600px){.top{gap:6px;padding:8px 10px}.tnav{padding:6px 8px;font-size:16px}#tUser span{display:none}.top .sp{display:none}}
@@ -906,7 +922,8 @@ const NAV=[
 ];
 function renderNav(){
   const cur=(location.hash.slice(2)||'painel').split('/')[0]; let h='';
-  NAV.forEach(([g,items])=>{ const vis=items.filter(it=>lvl(Array.isArray(it)?it[0]:it)>=1); if(!vis.length) return; h+='<div class="grp"><h6>'+esc(g)+'</h6>';
+  NAV.forEach(([g,items])=>{ const vis=items.filter(it=>lvl(Array.isArray(it)?it[0]:it)>=1); if(!vis.length) return; const has=vis.some(it=>(Array.isArray(it)?it[0]:it)===cur);
+    h+='<div class="grp'+(g==='Início'||has||NAV_OPEN.has(g)?' open':'')+'" data-g="'+esc(g)+'"><h6>'+esc(g)+'</h6>';
     items=items.filter(it=>lvl(Array.isArray(it)?it[0]:it)>=1); if(!items.length) return;
     items.forEach(it=>{ const [k,l]=Array.isArray(it)?it:[it,M[it].t]; let cnt='';
       if(k==='nc'){ const a=D('nc').filter(x=>x.estado!=='Fechada').length; cnt=a?'<span class="bd bad">'+a+'</span>':''; }
@@ -918,7 +935,9 @@ function renderNav(){
   document.getElementById('tSub').textContent=E.nome?'Sistema HACCP'+((E.sectores||[]).length?' · '+E.sectores.map(s=>SECT[s]?SECT[s].n:s).join(', '):''):'Sistema de Segurança Alimentar';
 }
 document.getElementById('burger').onclick=()=>document.getElementById('nav').classList.toggle('open');
-document.getElementById('nav').addEventListener('click',e=>{ if(e.target.closest('a')) document.getElementById('nav').classList.remove('open'); });
+const NAV_OPEN=new Set();
+document.getElementById('nav').addEventListener('click',e=>{ const h6=e.target.closest('h6'); if(h6){ const g=h6.parentElement; g.classList.toggle('open'); if(g.classList.contains('open')) NAV_OPEN.add(g.dataset.g); else NAV_OPEN.delete(g.dataset.g); return; }
+  if(e.target.closest('a')) document.getElementById('nav').classList.remove('open'); });
 const HIST=[]; let goingBack=false;
 function navInfo(k){ for(const [g,items] of NAV) for(const it of items){ const [kk,l]=Array.isArray(it)?it:[it,M[it]?M[it].t:it]; if(kk===k) return {g,l}; } return {g:'',l:M[k]?M[k].t:k}; }
 function goBack(){ closeModal(2); closeModal(1); if(HIST.length>1){ HIST.pop(); goingBack=true; location.hash='#/'+HIST[HIST.length-1]; } else location.hash='#/painel'; }
@@ -1728,7 +1747,7 @@ function bindView(key){
     if(b('modimp')) b('modimp').onclick=()=>{ const i=document.createElement('input'); i.type='file'; i.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf,image/*'; i.onchange=()=>{ if(i.files[0]) importModelo(i.files[0]); }; i.click(); };
     const q=v.querySelector('#q'); if(q) q.oninput=()=>{ const t=q.value.toLowerCase(); v.querySelectorAll('tbody tr').forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(t)?'':'none'); };
   }
-  ({empresa:bindEmpresa,analise:bindAnalise,dados:bindDados,rastreio:bindRastreio,assistente:bindAssistente,stock:bindStock,importar:bindImportar,utilizadores:bindUtilizadores,inspecao:bindInspecao}[key]||(()=>{}))();
+  ({painel:bindPainel,empresa:bindEmpresa,analise:bindAnalise,dados:bindDados,rastreio:bindRastreio,assistente:bindAssistente,stock:bindStock,importar:bindImportar,utilizadores:bindUtilizadores,inspecao:bindInspecao}[key]||(()=>{}))();
 }
 
 /* ---------- CSV export ---------- */
@@ -2152,7 +2171,7 @@ function alerts(){
   const order={danger:0,warn:1,info:2}; return a.filter(x=>lvl(x.k)>=1).sort((x,y)=>order[x.lvl]-order[y.lvl]);
 }
 function viewPainel(){
-  const al=alerts(); const ha=computeHA(); const hoje=today(); if(!S.empresa.nome&&!Object.values(S.data).some(x=>x.length)&&lvl('empresa')>=3) return viewBoasVindas();
+  const al=alerts().filter(x=>!/^(Sem registo de temperatura hoje|Registo diário por preencher|Controlo diário por registar)/.test(x.t)&&!/em atraso|a vencer|caduca|expira/i.test(x.t)&&x.k!=='nc'&&x.k!=='reclamacoes'); const ha=computeHA(); const hoje=today(); if(!S.empresa.nome&&!Object.values(S.data).some(x=>x.length)&&lvl('empresa')>=3) return viewBoasVindas();
   const recHoje=['temperaturas','rececao','higRegisto','pccRegisto','controlos','lotes'].reduce((s,k)=>s+D(k).filter(r=>(r.dt||r.data||'').startsWith(hoje)).length,0);
   const last30=[...D('temperaturas'),...D('pccRegisto'),...D('rececao'),...D('controlos')].filter(r=>daysTo((r.dt||r.data||'').slice(0,10))>=-30&&r.conforme);
   const pct=last30.length?Math.round(100*last30.filter(r=>r.conforme==='Conforme').length/last30.length):null;
@@ -2162,13 +2181,54 @@ function viewPainel(){
      '<div class="kpi" data-go="pccRegisto"><b>'+(pct==null?'—':pct+'%')+'</b><span>Conformidade (30 dias)</span></div><div class="kpi" data-go="assistente"><b>'+impl+'%</b><span>Implementação HACCP</span></div></div>';
   h+='<div class="card"><b>Registo rápido</b><div class="row" style="margin-top:10px"><button class="btn p" id="qTemp">Temperaturas</button><button class="btn p" id="qScan">Receção por leitura</button><button class="btn" data-new="rececao">Receção</button><button class="btn" data-new="lotes">Produção</button><button class="btn" id="qProdDia">Produção do dia</button>'+(D('modelos').some(x=>x.ativo!=='Não')?'<button class="btn" data-new="registos">Outros registos</button>':'')+
      (D('paramControlo').length?'<button class="btn" data-new="controlos">Controlo específico</button>':'')+'<button class="btn" data-new="epiEntregas">Entrega de EPI</button>'+'<button class="btn" data-new="higRegisto">Higienização</button>'+(ha.pccs.length?'<button class="btn" data-new="pccRegisto">PCC</button>':'')+'<button class="btn" data-new="nc">Não conformidade</button></div></div>';
-  h+='<div class="card"><b>Alertas</b> <span class="mut sm">('+al.length+')</span><div style="margin-top:10px">'+(al.length?al.map(x=>'<div class="alert '+x.lvl+'" data-go="'+x.k+'"><i>'+(x.lvl==='danger'?'!!':x.lvl==='warn'?'!':'i')+'</i><span>'+esc(x.t)+'</span></div>').join(''):'<p class="mut">Sem alertas. Tudo em dia.</p>')+'</div></div>';
+  const tk=todayTasks(); PAINEL_TASKS=tk; const nd=tk.filter(x=>x.done).length;
+  if(tk.length) h+='<div class="card"><div class="row"><b class="sp">Para fazer hoje</b><span class="sm '+(nd===tk.length?'':'mut')+'">'+nd+' de '+tk.length+' feitas</span></div><div class="prog"><i style="width:'+Math.round(100*nd/tk.length)+'%"></i></div>'+
+    tk.map((x,i)=>'<div class="todo'+(x.done?' done':'')+(x.late&&!x.done?' late':'')+'"><span class="ck">'+(x.done?'✓':'')+'</span><span class="tt">'+esc(x.t)+(x.sub?'<small>'+esc(x.sub)+'</small>':'')+'</span>'+(!x.done&&x.can?'<button class="btn '+(x.late?'p':'')+'" data-task="'+i+'">Registar</button>':'')+'</div>').join('')+'</div>';
+  const pend=pendentes(); if(pend.length) h+='<div class="card"><b>Pendentes</b> <span class="mut sm">('+pend.length+')</span><div style="margin-top:8px">'+pend.map(x=>'<div class="alert '+x.lvl+'" data-go="'+x.k+'"><i>'+(x.lvl==='danger'?'!!':'!')+'</i><span>'+esc(x.t)+'</span></div>').join('')+'</div></div>';
+  const pz=prazos(30); if(pz.length) h+='<div class="card"><b>Prazos — próximos 30 dias</b><div class="tw" style="margin-top:8px"><table><tbody>'+pz.map(x=>'<tr data-go="'+x.k+'"><td>'+dueBadge(x.d)+'</td><td>'+esc(x.t)+'</td><td class="mut sm">'+(daysTo(x.d)<0?'em atraso '+(-daysTo(x.d))+' d':daysTo(x.d)===0?'hoje':'daqui a '+daysTo(x.d)+' d')+'</td></tr>').join('')+'</tbody></table></div></div>';
+  h+='<div class="card"><b>Outros alertas</b> <span class="mut sm">('+al.length+')</span><div style="margin-top:10px">'+(al.length?al.map(x=>'<div class="alert '+x.lvl+'" data-go="'+x.k+'"><i>'+(x.lvl==='danger'?'!!':x.lvl==='warn'?'!':'i')+'</i><span>'+esc(x.t)+'</span></div>').join(''):'<p class="mut">Sem alertas. Tudo em dia.</p>')+'</div></div>';
+  h+='<h2 style="margin-top:22px">Menus</h2><div class="tiles">'+NAV.filter(([g])=>g!=='Início').map(([g,items])=>{ const vis=items.map(it=>Array.isArray(it)?it:[it,M[it].t]).filter(([k])=>lvl(k)>=1); if(!vis.length) return '';
+    return '<div class="tile"><h4>'+esc(g)+'</h4>'+vis.map(([k,l])=>'<a href="#/'+k+'">'+esc(l)+'</a>').join('')+'</div>'; }).join('')+'</div>';
   const frio=D('equipamentos').filter(isFrio);
-  if(frio.length&&lvl('temperaturas')>=1) h+='<div class="card"><b>Temperaturas — último registo</b><div class="tw" style="margin-top:10px"><table><thead><tr><th>Equipamento</th><th>Limites</th><th>Último registo</th><th>Valor</th><th></th></tr></thead><tbody>'+
+  if(frio.length&&lvl('temperaturas')>=1) h+='<div class="card" style="margin-top:14px"><b>Temperaturas — último registo</b><div class="tw" style="margin-top:10px"><table><thead><tr><th>Equipamento</th><th>Limites</th><th>Último registo</th><th>Valor</th><th></th></tr></thead><tbody>'+
     frio.map(e=>{ const t=D('temperaturas').filter(x=>x.equipamento===e.id).sort((a,b)=>b.dt.localeCompare(a.dt))[0];
       return '<tr data-go="temperaturas"><td>'+esc(e.nome)+'</td><td>'+M.equipamentos.virt.limites.fn(e)+'</td><td>'+(t?fDate(t.dt):'<span class="mut">nunca</span>')+'</td><td>'+(t?esc(t.valor)+' °C':'')+'</td><td>'+(t?badge(t.conforme):'')+'</td></tr>'; }).join('')+'</tbody></table></div></div>';
   return h;
 }
+let PAINEL_TASKS=[];
+function todayTasks(){ const hoje=today(); const T=[]; const inLast=(arr,days)=>arr.some(d=>d&&daysTo(String(d).slice(0,10))>-days&&daysTo(String(d).slice(0,10))<=0);
+  const per={'Diária':1,'Semanal':7,'Mensal':30};
+  const frio=D('equipamentos').filter(isFrio);
+  if(frio.length){ const feitos=frio.filter(e=>D('temperaturas').some(t=>t.equipamento===e.id&&(t.dt||'').startsWith(hoje)));
+    frio.forEach(e=>T.push({t:'Temperatura — '+e.nome,sub:M.equipamentos.virt.limites.fn(e),done:feitos.includes(e),k:'temperaturas',can:lvl('temperaturas')>=2,fn:tempAll,late:new Date().getHours()>=12})); }
+  D('higPlano').filter(h=>per[h.frequencia]).forEach(h=>{ const n=per[h.frequencia]; T.push({t:'Higienização — '+(h.oque||'')+(h.area?' ('+h.area+')':''),sub:h.frequencia,done:inLast(D('higRegisto').filter(r=>r.plano===h.id).map(r=>r.data),n),k:'higRegisto',can:lvl('higRegisto')>=2,fn:()=>openForm('higRegisto',null,{plano:h.id})}); });
+  D('paramControlo').filter(c=>per[c.frequencia]).forEach(c=>{ const n=per[c.frequencia]; T.push({t:'Controlo — '+c.nome,sub:c.frequencia,done:inLast(D('controlos').filter(r=>r.param===c.id).map(r=>r.dt),n),k:'controlos',can:lvl('controlos')>=2,fn:()=>openForm('controlos',null,{param:c.id})}); });
+  D('modelos').filter(m=>m.ativo!=='Não'&&per[m.frequencia]).forEach(m=>{ const n=per[m.frequencia]; T.push({t:m.nome,sub:'Registo '+m.frequencia.toLowerCase(),done:inLast(D('registos').filter(r=>r.modelo===m.id).map(r=>r.dt),n),k:'registos',can:lvl('registos')>=2,fn:()=>openForm('registos',null,{modelo:m.id})}); });
+  const lh=D('lotes').filter(l=>l.data===hoje); const pccs=computeHA().pccs;
+  if(lh.length&&pccs.length) T.push({t:'Monitorizar os PCC da produção de hoje',sub:lh.length+' lote(s) · '+pccs.map(p=>p.code).join(', '),done:D('pccRegisto').filter(r=>(r.dt||'').startsWith(hoje)).length>=pccs.length,k:'pccRegisto',can:lvl('pccRegisto')>=2,fn:()=>openForm('pccRegisto',null,{lote:lh[lh.length-1].lote})});
+  return T.filter(x=>lvl(x.k)>=1); }
+function pendentes(){ const P=[]; const add=(lvl_,t,k)=>{ if(lvl(k)>=1) P.push({lvl:lvl_,t,k}); };
+  D('nc').filter(n=>n.estado!=='Fechada').forEach(n=>{ const late=n.prazo&&daysTo(n.prazo)<0; add(late||n.gravidade==='Crítica'?'danger':'warn','NC '+(n.estado||'Aberta').toLowerCase()+(late?' — prazo ultrapassado':'')+': '+String(n.descricao||'').slice(0,90),'nc'); });
+  D('reclamacoes').filter(r=>r.estado!=='Fechada').forEach(r=>add('warn','Reclamação por fechar: '+(r.cliente||'')+(r.descricao?' — '+String(r.descricao).slice(0,60):''),'reclamacoes'));
+  D('retiradas').filter(r=>r.tipo!=='Simulacro de rastreabilidade'&&!r.fim).forEach(r=>add('danger','Retirada em curso: lote '+r.lote,'retiradas'));
+  D('lotes').filter(l=>l.estadoLote==='Em quarentena'||l.estadoLote==='Bloqueado').forEach(l=>add('warn','Lote '+l.lote+' '+l.estadoLote.toLowerCase(),'lotes'));
+  D('rececao').filter(r=>r.decisao==='Aceite condicionalmente'&&daysTo(r.data)>=-15).forEach(r=>add('warn','Receção aceite condicionalmente: '+lbl('fornecedores',r.fornecedor)+' ('+fDate(r.data)+')','rececao'));
+  D('analises').filter(a=>a.conforme==='A aguardar resultado').forEach(a=>add('warn','Análise a aguardar resultado: '+(a.amostra||'')+' ('+fDate(a.data)+')','analises'));
+  Object.keys(VERIF_MODS).forEach(k=>{ const lv=lastVerif(k); const n=D(k).filter(r=>{ const d=recDate(r); return d&&(!lv||d>lv.ate); }).length; if(n>=10&&(!lv||daysTo(lv.ate)<-30)) add('warn',n+' registo(s) de «'+VERIF_MODS[k]+'» por verificar e assinar',k); });
+  return P; }
+function prazos(dias){ const Z=[]; const add=(d,t,k)=>{ if(d&&daysTo(d)!=null&&daysTo(d)<=dias&&lvl(k)>=1) Z.push({d,t,k}); };
+  D('equipamentos').filter(e=>e.ativo!=='Não').forEach(e=>add(proxEquip(e),'Manutenção / calibração: '+e.nome,'equipamentos'));
+  D('planoAnalises').forEach(p=>add(proxAnalise(p),'Análise: '+(p.amostra||p.tipo||''),'planoAnalises'));
+  D('colaboradores').filter(c=>c.ativo!=='Não').forEach(c=>add(c.aptidao,'Ficha de aptidão: '+c.nome,'colaboradores'));
+  const lastF={}; D('formacao').filter(f=>f.validade).forEach(f=>{ if(!lastF[f.tema]||f.validade>lastF[f.tema].validade) lastF[f.tema]=f; }); Object.values(lastF).forEach(f=>add(f.validade,'Reciclagem da formação: '+f.tema,'formacao'));
+  D('formacao').filter(f=>f.estado==='Planeada').forEach(f=>add(f.data,'Formação planeada: '+f.tema,'formacao'));
+  D('fornecedores').forEach(f=>add(f.proxima,'Avaliação do fornecedor: '+f.nome,'fornecedores'));
+  const lp=D('pragas').slice().sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0]; if(lp) add(lp.proxima,'Visita de controlo de pragas','pragas');
+  D('documentos').forEach(d=>add(d.revisao,'Revisão: '+d.titulo,'documentos'));
+  D('nc').filter(n=>n.estado!=='Fechada').forEach(n=>add(n.prazo,'Prazo da NC: '+String(n.descricao||'').slice(0,60),'nc'));
+  try{ stockLots().filter(l=>l.disp>0&&l.validade&&daysTo(l.validade)<=7).forEach(l=>add(l.validade,'Validade em stock: '+lbl('materias',l.materia)+' (lote '+l.lote+', '+l.disp+' '+unidOf(l.materia)+')','stock')); }catch(e){}
+  return Z.sort((a,b)=>a.d.localeCompare(b.d)).slice(0,25); }
+function bindPainel(){ document.querySelectorAll('#view [data-task]').forEach(b=>b.onclick=()=>{ const x=PAINEL_TASKS[+b.dataset.task]; if(x&&x.fn) x.fn(); }); }
 function viewBoasVindas(){
   return '<h1>Bem-vindo à Gestão HACCP</h1><p class="sub">Gestão completa do sistema de segurança alimentar, adaptável a qualquer sector.</p>'+
    '<div class="card"><b>Como começar</b><ol style="margin:10px 0 0;padding-left:20px;line-height:1.9">'+
