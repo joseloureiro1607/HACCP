@@ -49,6 +49,9 @@ nav .grp a:hover{background:rgba(31,74,61,.10)}
 body.locked .tnav{display:none!important}
 .crumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:13px;color:var(--mut)}
 .crumb .btn{padding:5px 10px;font-size:13px}
+table.pgrid{font-size:13px}table.pgrid td,table.pgrid th{text-align:center;padding:6px 4px;min-width:30px}table.pgrid td:first-child,table.pgrid th:first-child{position:sticky;left:0;background:var(--card);min-width:110px;max-width:160px;z-index:1}table.pgrid td.pl{background:#eef1f4;font-weight:700}table.pgrid td.ok{background:#dcf3e4;color:#127a3e;font-weight:800}table.pgrid td.bad{background:#fde2e2;color:#b42318;font-weight:800}table.pgrid th.cur{background:var(--pri);color:#fff}
+details.pw{display:block}details.pw>summary::-webkit-details-marker{display:none}details.pw[open]{background:var(--card)}
+@media print{details.pw>div{display:block}}
 .ogtree{overflow-x:auto}.ogtree ul{list-style:none;margin:0;padding-left:22px;border-left:2px solid var(--line)}.ogtree>ul{border-left:0;padding-left:0}.ogtree li{margin:8px 0;position:relative}.ogtree ul ul li:before{content:'';position:absolute;left:-22px;top:18px;width:18px;border-top:2px solid var(--line)}
 .og{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer;font-size:14px}.og:hover{border-color:var(--pri)}
 table.trend td,table.trend th{text-align:center;padding:6px 5px}table.trend td:first-child{text-align:left}
@@ -76,7 +79,7 @@ nav a.on.st-ok,nav a.on.st-warn,nav a.on.st-bad{font-weight:700}
 .ntile:hover{background:var(--pri2)}.ntile:active{transform:scale(.97)}
 .ntile.big{min-height:104px;flex-direction:row;justify-content:flex-start;gap:12px;padding:14px 16px;text-align:left}
 .ntile .nic{font-size:28px;line-height:1}.ntile.big .nic{font-size:26px;flex:none}
-.ntile .nl{font-weight:600;font-size:14px;line-height:1.2;min-width:0;overflow-wrap:anywhere}.ntile.big .nl{font-size:15px;padding-right:12px}
+.ntile .nl{font-weight:600;font-size:14px;line-height:1.2;min-width:0;overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}.ntile.big .nl{font-size:15px;padding-right:12px}
 .ntile .nsub{font-size:11px;color:var(--mut)}
 .ntile .sem{left:auto;right:8px}
 .sem.sdot{position:static;display:inline-block;width:11px;height:11px;vertical-align:-1px;margin-left:6px}
@@ -548,6 +551,8 @@ function readDyn(root){ return [...root.querySelectorAll('[data-dyn="valores"] .
 function dynTable(r){ const c=r._campos||dynCampos(r.modelo); const rows=(r.valores||[]); if(!c.length||!rows.length) return '';
   const hasI=rows.some(x=>x.item); return '<table><thead><tr>'+(hasI?'<th></th>':'')+c.map(cc=>'<th>'+esc(cc.nome)+(cc.unidade?' ('+esc(cc.unidade)+')':'')+'</th>').join('')+'</tr></thead><tbody>'+rows.map(x=>'<tr>'+(hasI?'<td><b>'+esc(x.item)+'</b></td>':'')+c.map(cc=>'<td>'+esc((x.v||{})[cc.id]||'')+'</td>').join('')+'</tr>').join('')+'</tbody></table>'; }
 const ING_MODOS=['Proporcional','Fixa','% do ingrediente base'];
+const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MESES_L=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const SP_ESP=['Bovinos','Ovinos/Caprinos','Suínos','Aves','Prod. Pesca','Outra espécie'];
 const SP_TIPOS=['Cadáveres','Carcaças/Carne','Miudezas/Gorduras','Ossos','M1/M2 retidas SPT águas residuais','Outro SPA (indicar)'];
 const SP_CATS=['Subproduto animal — Categoria 3','Subproduto animal — Categoria 2','Subproduto animal — Categoria 1','Resíduo não animal — óleo alimentar usado (LER 20 01 25)','Resíduo não animal — outro','Reutilizado internamente (não sai da empresa)'];
@@ -805,9 +810,9 @@ const M={
   f:[{k:'nome',l:'Equipamento',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Frio positivo','Frio negativo','Equipamento térmico','Instrumento de medição','Equipamento de produção','Veículo','Outro']},
      {k:'local',l:'Localização'},{k:'marca',l:'Marca / modelo'},{k:'serie',l:'Nº de série'},{k:'tmin',l:'Temp. mínima (°C)',t:'number'},{k:'tmax',l:'Temp. máxima (°C)',t:'number'},
      {k:'freqTemp',l:'Regularidade do registo de temperatura',t:'sel',o:()=>FREQS_T},{k:'horasTemp',l:'Horas previstas para o registo (ex.: 08:00; 18:00 — opcional)'},
-     {k:'tipoInterv',l:'Intervenção periódica',t:'sel',o:['Manutenção preventiva','Calibração','Verificação interna','Manutenção e calibração']},{k:'periodicidade',l:'Periodicidade da manutenção (dias)',t:'number'},{k:'ultima',l:'Última manutenção',t:'date'},
+     {k:'tipoInterv',l:'Intervenção periódica',t:'sel',o:['Manutenção preventiva','Calibração','Verificação interna','Manutenção e calibração']},{k:'periodicidade',l:'Periodicidade da manutenção (dias)',t:'number'},{k:'mesesManut',l:'Meses previstos para a manutenção (como no plano)',t:'multi',o:MESES},{k:'ultima',l:'Última manutenção',t:'date'},
      {k:'tarefasManut',l:'O que fazer na manutenção',t:'textarea'},{k:'entidade',l:'Entidade / técnico da manutenção'},
-     {k:'calibra',l:'Requer calibração / verificação metrológica',t:'sel',o:['Não','Sim']},{k:'perCalib',l:'Periodicidade da calibração (dias)',t:'number'},{k:'ultimaCalib',l:'Última calibração',t:'date'},
+     {k:'calibra',l:'Requer calibração / verificação metrológica',t:'sel',o:['Não','Sim']},{k:'perCalib',l:'Periodicidade da calibração (dias)',t:'number'},{k:'mesesCalib',l:'Meses previstos para a calibração',t:'multi',o:MESES},{k:'ultimaCalib',l:'Última calibração',t:'date'},
      {k:'entCalib',l:'Entidade de calibração'},{k:'criterioCalib',l:'Critério de aceitação (ex.: erro ≤ ±0,5 °C)'},{k:'padrao',l:'Padrão / método de calibração'},
      {k:'ativo',l:'Em uso',t:'sel',o:['Sim','Não'],def:()=>'Sim'},{k:'obs',l:'Observações',t:'textarea'},{k:'docs',l:'Manuais / certificados de calibração',t:'files'}],
   list:['nome','tipo','local','limites','proxima','proxCal','tarefas','ativo'],
@@ -815,7 +820,7 @@ const M={
   onChange:(root,el)=>{ const g=k=>root.querySelector('[name="'+k+'"]');
     if(el.name==='nome'&&!g('tipo').value&&FRIO_RX.test(el.value)) g('tipo').value=/congel|negativ|abatedor/i.test(el.value)?'Frio negativo':'Frio positivo';
     if(el.name==='tipo'||el.name==='nome'){ const d=LIM_DEF[g('tipo').value]; if(d&&g('tmin').value===''&&g('tmax').value===''){ g('tmin').value=d.tmin; g('tmax').value=d.tmax; } } },
-  compute:r=>{ if((num(r.perCalib)||r.ultimaCalib)&&!r.calibra) r.calibra='Sim'; if(/Calibra/.test(r.tipoInterv||'')&&!r.calibra) r.calibra='Sim'; const d=LIM_DEF[r.tipo]; if(d&&!hasLim(r)){ r.tmin=d.tmin; r.tmax=d.tmax; r._limDef=1; } if(!r.freqTemp&&(hasLim(r)||/^Frio/.test(r.tipo||''))) r.freqTemp='Diária'; },
+  compute:r=>{ if(((r.mesesCalib||[]).length||num(r.perCalib)||r.ultimaCalib)&&!r.calibra) r.calibra='Sim'; if(/Calibra/.test(r.tipoInterv||'')&&!r.calibra) r.calibra='Sim'; const d=LIM_DEF[r.tipo]; if(d&&!hasLim(r)){ r.tmin=d.tmin; r.tmax=d.tmax; r._limDef=1; } if(!r.freqTemp&&(hasLim(r)||/^Frio/.test(r.tipo||''))) r.freqTemp='Diária'; },
   msg:r=>isFrio(r)?'Guardado — já aparece no registo de temperaturas'+(r._limDef?(delete r._limDef,' (limites '+M.equipamentos.virt.limites.fn(r)+' por defeito; ajuste se necessário)'):''):null,
   validate:r=>{ if(num(r.tmin)!=null&&num(r.tmax)!=null&&+r.tmin>+r.tmax) return 'A temperatura mínima não pode ser superior à máxima.'; return null; },
   virt:{limites:{l:'Limites',fn:r=>{ const lo=r.tmin!==''&&r.tmin!=null, hi=r.tmax!==''&&r.tmax!=null; return lo&&hi?r.tmin+' a '+r.tmax+' °C':hi?'≤ '+r.tmax+' °C':lo?'≥ '+r.tmin+' °C':''; }},
@@ -859,8 +864,9 @@ const M={
   list:['data','tipo','consumo','conforme','proxima'],
   nc:r=>(r.conforme==='Não conforme'||r.consumo==='Com atividade')?'Controlo de pragas: atividade/não conformidade detetada'+(r.ocorrencias?' — '+r.ocorrencias:''):null},
  planoAnalises:{t:'Plano de análises',d:'O que analisar e com que frequência. Os resultados registados em «Análises» atualizam o estado do plano.',label:r=>(r.tipo?r.tipo+' — ':'')+r.amostra,
+  top:()=>planWidgetHTML('anal'),topBind:v=>planWidgetBind('anal'),
   f:[{k:'tipo',l:'Tipo',t:'sel',o:['Produto acabado','Matéria-prima','Água','Superfícies (zaragatoas)','Mãos de manipuladores','Ar','Outra']},{k:'amostra',l:'Amostra',req:1},
-     {k:'parametros',l:'Parâmetros',t:'textarea'},{k:'frequencia',l:'Frequência (dias)',t:'number'},{k:'laboratorio',l:'Laboratório'},{k:'criterio',l:'Critérios / limites de aceitação',t:'textarea'}],
+     {k:'parametros',l:'Parâmetros',t:'textarea'},{k:'frequencia',l:'Frequência (dias)',t:'number'},{k:'meses',l:'Meses previstos (como no plano)',t:'multi',o:MESES},{k:'laboratorio',l:'Laboratório'},{k:'criterio',l:'Critérios / limites de aceitação',t:'textarea'}],
   list:['tipo','amostra','frequencia','ultima','proxima'],
   virt:{frequencia:{l:'Frequência',fn:r=>r.frequencia?'cada '+r.frequencia+' dias':''},ultima:{l:'Última',fn:r=>{ const a=lastAnalise(r.id); return a?fDate(a.data)+' '+badge(a.conforme):'<span class="mut">nunca</span>'; }},
         proxima:{l:'Próxima',fn:r=>{ const p=proxAnalise(r); return p?dueBadge(p):''; }}}},
@@ -880,10 +886,11 @@ const M={
   list:['nome','sector','frequencia','ncampos','nregs','ativo'],
   validate:r=>{ const c=(r.campos||[]).filter(x=>x.nome); if(!c.length) return 'Adicione pelo menos um campo.'; for(const x of c){ if(num(x.min)!=null&&num(x.max)!=null&&+x.min>+x.max) return 'No campo «'+x.nome+'» o mínimo é superior ao máximo.'; if(x.tipo==='Lista de opções'&&!String(x.opcoes||'').includes(';')&&!String(x.opcoes||'').trim()) return 'Indique as opções do campo «'+x.nome+'».'; } return null; },
   virt:{ncampos:{l:'Campos',fn:r=>(r.campos||[]).length+((r.itens||'').trim()?' × '+(r.itens||'').split('\n').filter(x=>x.trim()).length+' linhas':'')},nregs:{l:'Registos',fn:r=>D('registos').filter(x=>x.modelo===r.id).length}}},
- registos:{t:'Outros registos (modelos)',d:'Preenchimento dos modelos de registo da empresa. Valores fora dos limites ou «Não conforme» criam não conformidade automaticamente.',label:r=>fDate(r.dt)+' '+lbl('modelos',r.modelo),sort:'dt',
+ registos:{top:()=>regPrintBar(),topBind:v=>regPrintBind(),t:'Outros registos (modelos)',d:'Preenchimento dos modelos de registo da empresa. Valores fora dos limites ou «Não conforme» criam não conformidade automaticamente.',label:r=>fDate(r.dt)+' '+lbl('modelos',r.modelo),sort:'dt',
   f:[{k:'dt',l:'Data e hora',t:'dt',req:1,def:nowLocal},{k:'modelo',l:'Modelo de registo',t:'ref',ref:'modelos',filter:x=>x.ativo!=='Não',req:1},
      {k:'valores',l:'Registo',t:'dyn',render:(root,rec)=>renderDyn(root,rec.modelo,rec.valores,rec._campos,rec._itens),read:root=>readDyn(root),print:r=>dynTable(r)},
      {k:'lote',l:'Lote / referência (opcional)'},{k:'responsavel',l:'Responsável',def:getUser},{k:'obs',l:'Observações / ação corretiva',t:'textarea'}],
+  tools:'<div class="tools noprint"><button type="button" class="btn" data-tool="printFolha">🖨 Imprimir no formato do impresso</button><button type="button" class="btn" data-tool="origFolha">📄 Impresso original</button></div>',
   list:['dt','modelo','resumo','conforme','responsavel'],
   onChange:(root,el)=>{ if(el.name==='modelo') renderDyn(root,el.value,[],null,null); else if(el.dataset&&el.dataset.cid) dynMark(el); },
   validate:r=>{ if(!(r.valores||[]).some(x=>Object.values(x.v||{}).some(v=>v!==''))) return 'Preencha pelo menos um valor do registo.';
@@ -900,8 +907,10 @@ const M={
   virt:{resumo:{l:'Valores',fn:r=>{ const c=r._campos||[]; const out=[]; (r.valores||[]).forEach(row=>c.forEach(cc=>{ const v=(row.v||{})[cc.id]; if(v!=null&&v!=='') out.push((row.item?row.item+' · ':'')+cc.nome+': '+v+(cc.unidade&&cc.tipo==='Número'?' '+cc.unidade:'')); })); return esc(out.slice(0,3).join(' | ')+(out.length>3?' (+'+(out.length-3)+')':'')); }}}},
  documentos:{t:'Documentos e legislação',d:'Procedimentos, fichas técnicas e de segurança, certificados, legislação.',label:r=>r.titulo,
   f:[{k:'titulo',l:'Título',req:1},{k:'tipo',l:'Tipo',t:'sel',o:['Plano HACCP / plano','Procedimento','Instrução de trabalho','Impresso / registo','Ficha técnica','Ficha de segurança','Legislação','Certificado','Outro']},
-     {k:'codigo',l:'Código / versão'},{k:'data',l:'Data',t:'date'},{k:'revisao',l:'Próxima revisão',t:'date'},{k:'link',l:'Link / localização',w:1},{k:'obs',l:'Notas',t:'textarea'},{k:'docs',l:'Ficheiros',t:'files'}],
-  list:['titulo','tipo','codigo','revisao']},
+     {k:'codigo',l:'Código / versão'},{k:'data',l:'Data',t:'date'},{k:'revisao',l:'Próxima revisão',t:'date'},{k:'link',l:'Link / localização',w:1},{k:'obs',l:'Notas',t:'textarea'},{k:'docs',l:'Ficheiros',t:'files'},
+     {k:'menus',l:'Aparece também nos menus',t:'multi',get o(){ try{ return navItems().filter(x=>M[x.k]||['planoManut','planoCalib','analise','plano','stock'].includes(x.k)).map(x=>({v:x.k,l:x.l})); }catch(e){ return []; } }}],
+  list:['titulo','tipo','origem','codigo','revisao'],
+  virt:{origem:{l:'Origem',fn:r=>r._orig?'<span class="bd ok">Original importado</span>'+((r.menus||[]).length?' <span class="sm mut">'+esc(r.menus.map(k=>navInfo(k).l).slice(0,3).join(', '))+(r.menus.length>3?'…':'')+'</span>':''):''}}},
 
  temperaturas:{t:'Temperaturas',d:'Registo de temperaturas. A conformidade é calculada com os limites do equipamento.',label:r=>fDate(r.dt),sort:'dt',
   f:[{k:'dt',l:'Data e hora',t:'dt',req:1,def:nowLocal},{k:'equipamento',l:'Equipamento',t:'ref',ref:'equipamentos',filter:isFrio,req:1},
@@ -1152,7 +1161,7 @@ const CHECKLIST=['Equipa HACCP definida, com formação adequada','Descrição d
 CHECKLISTS['Codex · Reg. 852/2004 · BRCGS · IFS']=CHECKLIST; CHECKLISTS['BRCGS v9 — Auditoria interna (todas as cláusulas)']=CHECKLIST_BRC;
 const ORIG={registos:'Registo (modelo)',reclamacoes:'Reclamação de cliente',retiradas:'Retirada / recolha',auditorias:'Auditoria',vidros:'Vidro / plásticos',temperaturas:'Registo de temperatura',pccRegisto:'Monitorização PCC',controlos:'Controlo específico',rececao:'Receção',higRegisto:'Higienização',manutencao:'Manutenção',analises:'Análise',pragas:'Controlo de pragas'};
 function lastAnalise(pid){ return D('analises').filter(a=>a.plano===pid).sort((a,b)=>b.data.localeCompare(a.data))[0]; }
-function proxAnalise(p){ if(!num(p.frequencia)) return null; const a=lastAnalise(p.id); return a?addDays(a.data,p.frequencia):today(); }
+function proxAnalise(p){ if((p.meses||[]).length) return planDue(planCfg('anal'),p); if(!num(p.frequencia)) return null; const a=lastAnalise(p.id); return a?addDays(a.data,p.frequencia):today(); }
 
 /* ---------- Navegação ---------- */
 /* Todos os menus aceitam anexos (fichas técnicas, certificados, fotos…) */
@@ -1302,8 +1311,8 @@ function badge(v){ if(!v) return '';
   const warn=['Aceite condicionalmente','B - Aprovado c/ condições','Em curso','Maior','Por avaliar','Com observações','A aguardar resultado','Em avaliação','Planeada','Em quarentena','Em análise','Planeado','Por determinar'];
   const c=ok.includes(v)?'ok':bad.includes(v)?'bad':warn.includes(v)?'warn':''; return '<span class="bd '+c+'">'+esc(v)+'</span>'; }
 function dueBadge(iso){ const d=daysTo(iso); if(d==null) return ''; const c=d<0?'bad':d<=15?'warn':'ok'; return '<span class="bd '+c+'">'+fDate(iso)+'</span>'; }
-function proxEquip(e){ return (e.ultima&&num(e.periodicidade))?addDays(e.ultima,e.periodicidade):null; }
-function proxCalib(e){ if(e.calibra!=='Sim'||!num(e.perCalib)) return null; return e.ultimaCalib?addDays(e.ultimaCalib,e.perCalib):today(); }
+function proxEquip(e){ if((e.mesesManut||[]).length) return planDue(planCfg('manut'),e); return (e.ultima&&num(e.periodicidade))?addDays(e.ultima,e.periodicidade):null; }
+function proxCalib(e){ if((e.mesesCalib||[]).length) return planDue(planCfg('calib'),e); if(e.calibra!=='Sim'||!num(e.perCalib)) return null; return e.ultimaCalib?addDays(e.ultimaCalib,e.perCalib):today(); }
 const isCalibTipo=t=>t==='Calibração'||t==='Verificação interna';
 const BADGE_FIELDS=['estadoLote','estadoItem','justificada','saude','conforme','resultado','estado','classificacao','decisao','executado','verificacao','eficacia','gravidade','ativo','consumo','transporte','documentacao'];
 const DUE_FIELDS=['proxima','prazo','aptidao','revisao'];
@@ -1338,12 +1347,10 @@ function sigCount(m,r){ return m.f.filter(f=>f.t==='sig'&&r[f.k]).length+((r.ass
 function viewList(key){
   const m=M[key]; const rows=sorted(key); const L=lvl(key);
   const sigCol=!m.f.some(f=>f.t==='sig')&&rows.some(r=>(r.assinaturas||[]).length);
-  let h='<h1>'+esc(m.t)+'</h1><p class="sub">'+esc(m.d)+'</p>'; if(m.top) h+=m.top();
+  let h='<h1>'+esc(m.t)+'</h1><p class="sub">'+esc(m.d)+'</p>'+origBanner(key); if(m.top) h+=m.top();
   if(VERIF_MODS[key]){ const lv=lastVerif(key); h+='<div class="card sm row" style="padding:10px 14px"><span class="sp">'+(lv?'Última verificação: '+fDate(lv.de)+' a '+fDate(lv.ate)+' — '+esc(lv.assinatura?lv.assinatura.nome:'')+' '+badge(lv.resultado):'Estes registos ainda não foram verificados.')+'</span>'+
     (lvl('verificacoes')>=2&&rows.length?'<button class="btn s p" data-act="verif">Verificar e assinar</button>':'')+'</div>'; }
   h+='<div class="row noprint" style="margin-bottom:12px">'+(L>=2?'<button class="btn p" data-act="new">+ Novo</button>':'');
-  if(key==='rececao'&&L>=2) h+='<button class="btn" data-act="newscan">Nova receção por leitura</button>';
-  if(key==='lotes'&&L>=2) h+='<button class="btn p" data-act="proddia">Produção do dia (várias receitas)</button>';
   if(key==='planeamento') h+='<button class="btn" data-act="needsAll">Lista de compras (todos os planos em aberto)</button>';
   if(key==='residuos'&&L>=2&&lvl('guiasSP')>=2) h+='<button class="btn p" data-act="guiaMulti">Emitir guia para saídas em armazenagem</button>';
   if(GEN[key]&&L>=2) h+='<button class="btn" data-act="gen">Modelos genéricos</button>';
@@ -1354,7 +1361,7 @@ function viewList(key){
   if(key==='etapas'&&L>=3) h+='<button class="btn" data-act="modelo">Carregar modelo de sector</button>';
   if(key==='documentos'&&lvl('importar')>=2) h+='<a class="btn" href="#/importar">Importar documentos existentes</a>';
   h+='<input type="search" id="q" placeholder="Pesquisar em tudo (nome, NIF, lote, notas…)" style="max-width:300px"><span class="sp"></span>';
-  h+=(L>=3?'<button class="btn s" data-act="csvin">Importar Excel/CSV</button><button class="btn s" data-act="smart">Importação inteligente</button>':'')+'<button class="btn s" data-act="csv">Exportar CSV</button><button class="btn s" data-act="print">Imprimir</button>'+(BLANK_OK(key)?'<button class="btn s" data-act="blank">Impresso em branco</button>':'')+'</div>';
+  h+=(L>=3?'<button class="btn s" data-act="csvin">'+(key==='registos'||key==='modelos'?'Importar impresso':'Importar (Excel, Word, PDF)')+'</button><button class="btn s" data-act="smart">Importar vários (distribuir pelos menus)</button>':'')+'<button class="btn s" data-act="csv">Exportar CSV</button><button class="btn s" data-act="print">Imprimir</button>'+(BLANK_OK(key)?'<button class="btn s" data-act="blank">Impresso em branco</button>':'')+'</div>';
   h+='<div class="pr-only">'+docHead(m.t,'Impresso em '+fDate(today()))+'</div>';
   if(!rows.length) h+='<div class="card empty">Ainda não há registos.'+(L>=2?' Toque em <b>+ Novo</b> para começar.':'')+'</div>';
   else { const clipCol=rows.some(r=>recFiles(key,r).length);
@@ -1505,6 +1512,8 @@ function openForm(key,id,preset){
           const mc=x.l.modo==='Nº de vezes'?'Nº de vezes a receita':x.l.modo==='Ingrediente base'?'Pelo ingrediente base':'Pela quantidade a produzir'; g('modoCalc').value=mc; g('modoCalc').dispatchEvent(new Event('change',{bubbles:true}));
           const fk=mc==='Nº de vezes a receita'?'vezes':mc==='Pelo ingrediente base'?'qtdBase':'quantidade'; g(fk).value=x.l.valor||''; g(fk).dispatchEvent(new Event('change',{bubbles:true})); root._plan={pl:x.pl.id,l:x.l.id}; }); }
       else if(tool.dataset.tool==='guiaSP'){ const v=readForm(root,m.f); const cur=id?D(key).find(x=>x.id===id):null; if(!cur){ toast('Guarde primeiro o registo e depois emita a guia'); return; } closeModal(1); openGuiaFrom([cur.id]); }
+      else if(tool.dataset.tool==='printFolha'){ const v=readForm(root,m.f); const r={...rec,...v}; if(!r.modelo){ toast('Escolha o modelo'); return; } M.registos.compute(r); printFolha(r.modelo,[r]); }
+      else if(tool.dataset.tool==='origFolha'){ const v=readForm(root,m.f); const md=D('modelos').find(x=>x.id===(v.modelo||rec.modelo)); dlOrigModelo(md); }
       else if(tool.dataset.tool==='xlsGuia'){ const v=readForm(root,m.f); const g={...rec,...v}; const rc=D('recetores').find(x=>x.id===g.recetor);
         guiaXlsx(g).then(f=>shareDoc({file:f,name:f.name,subject:'Guia de acompanhamento '+g.numero+' — '+(S.empresa.nome||''),to:rc&&rc.email||''})).catch(e=>toast('Não foi possível gerar o Excel: '+(e.message||e),6000)); }
       else if(tool.dataset.tool==='mailGuia'){ const v=readForm(root,m.f); const g={...rec,...v,sigExp:root._sig.sigExp,sigTr:root._sig.sigTr}; const rc=D('recetores').find(x=>x.id===g.recetor); shareDoc({html:guiaHTML(g),name:'Guia '+String(g.numero).replace(/\//g,'-')+'.pdf',subject:'Guia de acompanhamento '+g.numero+' — '+(S.empresa.nome||''),to:rc&&rc.email||''}); }
@@ -1664,7 +1673,7 @@ function modLib(){
 /* ---------- Importar o modelo (impresso) que a empresa já usa ---------- */
 function guessCampo(h){ const t=String(h).replace(/\s+/g,' ').trim(); const n=norm(t)+' '+t.toLowerCase(); const c={nome:t,tipo:'Número',unidade:'',min:'',max:'',opcoes:''};
   const u=t.match(/\(([^)]*)\)/); const inner=u?u[1]:'';
-  const nums=(inner||t).replace(/,/g,'.').match(/-?\d+(?:\.\d+)?/g)||[];
+  const nums=(/\d/.test(inner)?inner:t).replace(/,/g,'.').match(/-?\d+(?:\.\d+)?/g)||[];
   if(/[°º]\s*c|temp/.test(n)||/°|º/.test(t)) c.unidade='°C';
   else if(/\bph\b/.test(n)) c.unidade='';
   else if(/%|percent|humidade|compostos polares/.test(n)) c.unidade='%';
@@ -1686,8 +1695,10 @@ function modeloFromTable(rows,titulo){ rows=rows.map(r=>r.map(c=>String(c||'').r
   let itemCol=-1; if(head[0]&&ITEM_COL.test(head[0])) itemCol=0;
   else { const col0=body.map(r=>r[0]).filter(Boolean); if(col0.length>=2&&col0.every(v=>!/^\d+([.,/-]\d+)*$/.test(v)&&isNaN(Date.parse(v)))&&new Set(col0).size===col0.length&&body.slice(0,col0.length).every(r=>r.slice(1).every(c=>!c))) itemCol=0; }
   const itens=itemCol>=0?[...new Set(body.map(r=>r[itemCol]).filter(Boolean))].slice(0,40):[];
-  const campos=head.map((h,i)=>({h,i})).filter(x=>x.h&&x.i!==itemCol&&!SKIP_COL.test(norm(x.h))).map(x=>guessCampo(x.h));
-  return {nome,itens:itens.join('\n'),campos}; }
+  const cols=head.map((h,i)=>({h,i})).filter(x=>x.h&&x.i!==itemCol&&!SKIP_COL.test(norm(x.h))); const campos=cols.map(x=>guessCampo(x.h));
+  const map=head.map((h,i)=>{ const n=norm(h); if(!h) return null; if(i===itemCol) return {h,k:'item'}; const ci=cols.findIndex(x=>x.i===i); if(ci>=0) return {h,k:'campo',ci};
+    return {h,k:/^(data|dia)/.test(n)?'data':/hora/.test(n)?'hora':/observa|corretiva/.test(n)?'obs':'resp'}; }).filter(Boolean);
+  return {nome,itens:itens.join('\n'),campos,layout:{pre:before.slice(0,4),map}}; }
 function modeloFromLines(lines,titulo){ const L=lines.map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x&&x.length<140);
   const nome=L.find(x=>x.length>4&&x.length<90&&!/empresa|morada|nif|página|pagina|^\d+$/i.test(x))||titulo;
   const itens=L.filter(x=>x!==nome&&!/^(data|hora|respons|rubrica|assinatura|observa|visto|página|pagina)/i.test(x)&&!/^[\d\s.,:/-]+$/.test(x)&&x.replace(/[^A-Za-zÀ-ú]/g,'').length>=4).slice(0,40);
@@ -1711,7 +1722,9 @@ async function importModelo(file){
   closeModal(2);
   if(!mod.campos.length) mod.campos=[{nome:'Avaliação',tipo:'Conforme / Não conforme'}];
   const fid=uid(); let docs=[]; try{ await FDB.put(fid,file); docs=[{id:fid,name:file.name,type:file.type,size:file.size}]; }catch(e){}
-  openForm('modelos',null,{nome:mod.nome,sector:'Específico da empresa',itens:mod.itens,campos:mod.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min||'',max:c.max||'',opcoes:c.opcoes||''})),docs});
+  const cs=mod.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min||'',max:c.max||'',opcoes:c.opcoes||''}));
+  let od=null; try{ od=await archiveOrig(file,['registos','modelos'],{tipo:'Impresso / registo'}); save(); }catch(e){}
+  openForm('modelos',null,{nome:mod.nome,sector:'Específico da empresa',itens:mod.itens,campos:cs,layout:layoutFix(mod.layout,cs),origDoc:od?od.id:'',docs});
   toast('Impresso lido: '+mod.campos.length+' campo(s)'+(mod.itens?' e '+mod.itens.split('\n').length+' linha(s)':'')+'. Confirme, ajuste e guarde.',7000);
 }
 function quickFiles(key,id){ const r=D(key).find(x=>x.id===id); if(!r) return; const fs=recFiles(key,r);
@@ -1768,11 +1781,17 @@ function genSources(key){ const secs=S.empresa.sectores||[]; const order=[...sec
   if(key==='epis'){ add('Comum',GEN_EPIS.comum,x=>x); order.forEach(k=>add(lab(k),GEN_EPIS[k],x=>x)); }
   if(key==='vidros') add('Inventário típico',GEN_VIDROS,x=>({...x,quantidade:'1',periodicidade:'30',ultimaInspecao:today(),estadoItem:'Intacto'}));
   if(key==='objetivos') add('Cultura de segurança alimentar',GEN_OBJ,x=>({...x,data:today(),prazo:addDays(today(),365),estado:'Planeado'}));
+  if(key==='organograma') add('Estrutura típica',GEN_ORG,x=>x);
+  if(key==='equipa') add('Equipa HACCP típica',GEN_EQUIPA,x=>x);
+  if(key==='contactosEmerg') add('Contactos de emergência',GEN_CONT,x=>x);
   if(key==='vulnerabilidade') add('Fraude e defesa alimentar',GEN_VULN,x=>({...x,data:today(),revisao:addDays(today(),365)}));
   return out; }
-const GEN_KEY={equipamentos:r=>r.nome,planoAnalises:r=>r.amostra,higPlano:r=>(r.area||'')+'|'+(r.oque||''),paramControlo:r=>r.nome,formacao:r=>r.tema,documentos:r=>r.titulo,epis:r=>r.nome,vidros:r=>r.local+'|'+r.item,objetivos:r=>r.descricao,vulnerabilidade:r=>r.alvo+'|'+r.ameaca};
+const GEN_ORG=[{cargo:'Gerência',equipaSA:'Sim',responsabilidades:'Compromisso com a segurança alimentar; aprova a política, os objetivos e os recursos; revisão pela gestão.',ordem:1},{cargo:'Responsável da qualidade e segurança alimentar',equipaSA:'Sim',responsabilidades:'Coordena o HACCP; verifica os registos; trata não conformidades, reclamações e retiradas; auditorias internas.',ordem:2},{cargo:'Responsável de produção',equipaSA:'Sim',responsabilidades:'Cumprimento das receitas e PCC; organização da produção; formação dos operadores.',ordem:3},{cargo:'Responsável de compras e receção',equipaSA:'Não',responsabilidades:'Seleção e avaliação de fornecedores; controlo à receção.',ordem:4},{cargo:'Responsável de manutenção',equipaSA:'Não',responsabilidades:'Plano de manutenção e calibração.',ordem:5},{cargo:'Operadores',equipaSA:'Não',responsabilidades:'Cumprir as boas práticas de higiene; preencher os registos; comunicar desvios.',ordem:6}];
+const GEN_EQUIPA=[{nome:'(nome)',funcao:'Gerência',papel:'Membro'},{nome:'(nome)',funcao:'Responsável da qualidade',papel:'Coordenador'},{nome:'(nome)',funcao:'Responsável de produção',papel:'Membro'},{nome:'(nome)',funcao:'Consultor externo de segurança alimentar',papel:'Consultor externo'}];
+const GEN_CONT=[{nome:'Emergência (INEM, bombeiros, PSP/GNR)',telefone:'112',tipo:'Outro',funcao:'Acidentes, incêndio, emergência médica'},{nome:'Centro de Informação Antivenenos (CIAV)',telefone:'800 250 250',tipo:'Outro',funcao:'Intoxicações (químicos, produtos de limpeza)'},{nome:'DGAV — direção de serviços da sua região',telefone:'(preencher)',tipo:'Autoridade (DGAV/ASAE)',funcao:'Notificar incidentes e retiradas de produto'},{nome:'ASAE',telefone:'(preencher)',tipo:'Autoridade (DGAV/ASAE)',funcao:'Notificar incidentes e retiradas de produto'},{nome:'Laboratório de análises',telefone:'(preencher)',tipo:'Laboratório',funcao:'Análises urgentes'},{nome:'Empresa de controlo de pragas',telefone:'(preencher)',tipo:'Assistência técnica',funcao:'Infestação'},{nome:'Assistência técnica do frio',telefone:'(preencher)',tipo:'Assistência técnica',funcao:'Avaria de câmaras'},{nome:'Fornecedor de energia (avarias)',telefone:'(preencher)',tipo:'Outro',funcao:'Falha de energia'},{nome:'Seguradora',telefone:'(preencher)',tipo:'Seguradora',funcao:'Sinistros'}];
+const GEN_KEY={organograma:r=>r.cargo,equipa:r=>r.funcao,contactosEmerg:r=>r.nome,equipamentos:r=>r.nome,planoAnalises:r=>r.amostra,higPlano:r=>(r.area||'')+'|'+(r.oque||''),paramControlo:r=>r.nome,formacao:r=>r.tema,documentos:r=>r.titulo,epis:r=>r.nome,vidros:r=>r.local+'|'+r.item,objetivos:r=>r.descricao,vulnerabilidade:r=>r.alvo+'|'+r.ameaca};
 const GEN=Object.fromEntries(Object.keys(GEN_KEY).map(k=>[k,1]));
-const GEN_LABEL=(key,r)=>key==='higPlano'?(r.oque+' ('+r.area+') · '+r.frequencia):key==='planoAnalises'?(r.amostra+' · '+r.parametros):key==='paramControlo'?(r.nome+(r.lmin!=null||r.lmax!=null?' · '+[r.lmin!=null?'≥ '+r.lmin:'',r.lmax!=null?'≤ '+r.lmax:''].filter(Boolean).join(' e ')+' '+(r.unidade||''):'')):key==='equipamentos'?(r.nome+(r.tmin!=null||r.tmax!=null?' · '+(r.tmin??'—')+' a '+(r.tmax??'—')+' °C':'')):key==='vidros'?(r.local+' — '+r.item):key==='vulnerabilidade'?(r.alvo+' — '+r.ameaca):key==='epis'?(r.nome+(r.norma?' · '+r.norma:'')):(r.tema||r.titulo||r.descricao||r.nome);
+const GEN_LABEL=(key,r)=>key==='higPlano'?(r.oque+' ('+r.area+') · '+r.frequencia):key==='planoAnalises'?(r.amostra+' · '+r.parametros):key==='paramControlo'?(r.nome+(r.lmin!=null||r.lmax!=null?' · '+[r.lmin!=null?'≥ '+r.lmin:'',r.lmax!=null?'≤ '+r.lmax:''].filter(Boolean).join(' e ')+' '+(r.unidade||''):'')):key==='equipamentos'?(r.nome+(r.tmin!=null||r.tmax!=null?' · '+(r.tmin??'—')+' a '+(r.tmax??'—')+' °C':'')):key==='vidros'?(r.local+' — '+r.item):key==='vulnerabilidade'?(r.alvo+' — '+r.ameaca):key==='epis'?(r.nome+(r.norma?' · '+r.norma:'')):(key==='equipa'?r.funcao+' ('+r.papel+')':key==='contactosEmerg'?r.nome+' · '+r.telefone:r.cargo||r.tema||r.titulo||r.descricao||r.nome);
 function defaultTarefas(e){ const n=norm((e.nome||'')+' '+(e.tipo||''));
   if(/pasteuriz/.test(n)) return 'Verificar a válvula de desvio de fluxo\nCalibrar termómetros e termógrafo (padrão rastreável)\nVerificar juntas, placas e estanquidade\nVerificar o registo contínuo de temperatura';
   if(/camara|arca|frigor|congel|vitrine|refriger|frio|abatedor|tunel|tanque/.test(n)) return 'Limpar condensador e evaporador\nVerificar vedantes e fecho das portas\nVerificar gás refrigerante e pressões (técnico certificado)\nVerificar a sonda de temperatura contra termómetro calibrado\nTestar o alarme e o registador de temperatura';
@@ -1793,13 +1812,14 @@ function genPick(key){ const src=genSources(key); const have=new Set(D(key).map(
       if(key==='higPlano'){ if(!rec.metodo) rec.metodo=HIG_METODO; if(!rec.produto) rec.produto='Detergente / desinfetante de uso alimentar (ver ficha técnica)'; } D(key).push(rec); });
     save(); closeModal(1); render(); toast(sel.length+' registo(s) criado(s) a partir dos modelos genéricos',5000); }}],1); }
 /* ---------- Impressos em branco ---------- */
-const BLANK_OK=k=>!!M[k]&&!['equipa','etapas','produtos','materias','receitas','documentos','modelos','fornecedores','epis','vidros','objetivos','vulnerabilidade','paramControlo','planoAnalises','higPlano','verificacoes'].includes(k)||k==='modelos';
+const BLANK_OK=k=>!!M[k]||['planoManut','planoCalib'].includes(k);
 function blankHead(titulo,cod){ return '<table style="margin-bottom:8px"><tr><td style="width:60%">'+(logoTag(44)?logoTag(44)+'<br>':'')+'<b>'+esc(S.empresa.nome||'')+'</b><br>'+esc(titulo)+'</td><td>'+(cod?'Código: '+esc(cod)+'<br>':'')+'Mês / ano: ________________<br>Folha nº: ______</td></tr></table>'; }
 function blankSign(){ return '<p style="margin-top:14px">Verificado por: ______________________________ Data: ____/____/______ Assinatura: ______________________</p>'; }
 function doPrint(h){ const el=document.getElementById('printOne'); el.innerHTML=h; document.body.classList.add('print-one'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-one'),500); },150); }
-function printBlank(key){ const m=M[key]; const skip=['files','sig','lines','dyn']; const cols=m.f.filter(f=>!skip.includes(f.t)&&!['obs','lotesMP','destino','anexos','modoCalc','qtdBase','abater','horas'].includes(f.k)).slice(0,8);
+function printBlank(key){ if(BLANK_SPECIAL[key]&&BLANK_SPECIAL[key]()!==false) return; const m=M[key]; const skip=['files','sig','lines','dyn']; const cols=m.f.filter(f=>!skip.includes(f.t)&&!['obs','lotesMP','destino','anexos','modoCalc','qtdBase','abater','horas'].includes(f.k)).slice(0,8);
   let info=''; if(key==='temperaturas'){ const fr=D('equipamentos').filter(isFrio); info='<p class="sm">Equipamentos: '+fr.map(e=>esc(e.nome)+' ('+M.equipamentos.virt.limites.fn(e)+(e.freqTemp?', '+esc(e.freqTemp):'')+')').join(' · ')+'</p>'; }
   if(key==='higRegisto') info='<p class="sm">Tarefas: '+D('higPlano').map(h=>esc(h.oque+' ('+h.area+') — '+(h.frequencia||''))).join(' · ')+'</p>';
+  if(key==='pccRegisto') info='<p class="sm">PCC do plano: '+pccPlanList().map(x=>esc(x.code+' '+x.etapa+' — limite: '+(x.pd.limite||'')+' · '+(x.freq||''))).join(' · ')+'</p>';
   if(key==='controlos') info='<p class="sm">Parâmetros: '+D('paramControlo').map(p=>esc(p.nome)+' '+M.paramControlo.virt.limites.fn(p)).join(' · ')+'</p>';
   const h='<h1>'+esc(m.t)+'</h1>'+blankHead(m.t)+info+'<table><thead><tr>'+cols.map(c=>'<th>'+esc(c.l.replace(/\s*\(.*\)$/,''))+'</th>').join('')+'<th>Rubrica</th></tr></thead><tbody>'+Array.from({length:22},()=>'<tr>'+cols.map(()=>'<td style="height:26px"></td>').join('')+'<td></td></tr>').join('')+'</tbody></table>'+
     '<p class="sm">Em caso de não conformidade, descrever a ação corretiva no verso ou no registo de não conformidades.</p>'+blankSign();
@@ -1814,7 +1834,7 @@ function printBlankModelo(md){ const campos=(md.campos||[]).filter(c=>c.nome); i
   doPrint(h); }
 function pickBlankModelo(){ const ms=D('modelos').filter(m=>m.ativo!=='Não'); if(!ms.length){ toast('Ainda não há modelos de registo'); return; }
   const root=modal('Imprimir impresso em branco',ms.map((m,i)=>'<label style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><input type="radio" name="pbm" value="'+i+'" style="width:auto"'+(i===0?' checked':'')+'> '+esc(m.nome)+'</label>').join(''),
-    [{l:'Cancelar',fn:()=>closeModal(1)},{l:'Imprimir',c:'p',fn:r=>{ const i=+r.querySelector('input[name=pbm]:checked').value; closeModal(1); printBlankModelo(ms[i]); }}],1); }
+    [{l:'Cancelar',fn:()=>closeModal(1)},{l:'Imprimir',c:'p',fn:r=>{ const i=+r.querySelector('input[name=pbm]:checked').value; closeModal(1); if(ms[i].layout) printFolha(ms[i].id,[]); else printBlankModelo(ms[i]); }}],1); }
 function recSearch(key,r){ const m=M[key]; const out=[];
   const val=(f,v)=>{ if(v==null||v==='') return; if(f.t==='ref') out.push(lbl(f.ref,v)); else if(f.t==='refm') (v||[]).forEach(x=>out.push(lbl(f.ref,x))); else if(f.t==='files') (v||[]).forEach(a=>out.push(a.name)); else if(f.t==='sig') out.push(v.nome||''); else if(Array.isArray(v)) out.push(v.map(x=>typeof x==='object'?Object.values(x).join(' '):x).join(' ')); else if(typeof v!=='object') out.push(String(v)); };
   m.f.forEach(f=>{ const v=r[f.k]; if(f.t==='lines'){ (v||[]).forEach(l=>f.cols.forEach(c=>val(c,l[c.k]))); } else if(f.t==='dyn'){ (v||[]).forEach(x=>{ out.push(x.item||''); Object.values(x.v||{}).forEach(y=>out.push(y)); }); } else val(f,v); });
@@ -2281,6 +2301,7 @@ const SYN={nome:['nome','designacao','denominacao','razao social','empresa','for
  data:['data','dia','date'],dt:['data','data hora','data e hora'],valor:['valor','leitura','temperatura','temp','medicao'],responsavel:['responsavel','rubrica','operador','executado por','assinatura'],
  lote:['lote','n lote','numero de lote','batch'],validade:['validade','data de validade','consumir ate','val'],qtd:['quantidade','qtd','qtde','peso','kg'],quantidade:['quantidade','qtd','qtde','peso'],
  tipo:['tipo','categoria','familia'],local:['local','localizacao','zona','area'],tmin:['temp minima','temperatura minima','t min','min'],tmax:['temp maxima','temperatura maxima','t max','max'],serie:['n serie','numero de serie','serie','n de serie','no serie','s n','sn','numero serie','n s'],marca:['marca','modelo','marca modelo','fabricante','marca e modelo'],
+ mesesManut:['meses previstos','meses','calendarizacao','meses manutencao','meses de manutencao','calendario'],mesesCalib:['meses calibracao','meses de calibracao'],meses:['meses previstos','meses','calendarizacao','calendario'],
  perCalib:['periodicidade calibracao','periodicidade da calibracao','frequencia calibracao','frequencia da calibracao','calibracao periodicidade','intervalo de calibracao'],ultimaCalib:['ultima calibracao','data calibracao','data da calibracao','data ultima calibracao','data da ultima calibracao','calibrado em'],
  entCalib:['entidade calibracao','laboratorio calibracao','entidade calibradora','calibrado por','entidade de calibracao'],criterioCalib:['criterio de aceitacao','erro maximo admissivel','ema','tolerancia','criterio aceitacao'],padrao:['padrao','termometro padrao','metodo de calibracao','padrao de referencia'],
  alergenos:['alergenios','alergenos','alergenicos'],periodicidade:['periodicidade','frequencia','periodo','intervalo','periodicidade dias','cada'],ultima:['ultima manutencao','ultima intervencao','data ultima','ultima','data da ultima','data da ultima manutencao','data manutencao'],
@@ -2309,16 +2330,20 @@ function convVal(f,v,auto,created){
   if(t==='multi') return v.split(/[,;]/).map(s=>s.trim()).filter(Boolean);
   return v;
 }
+let IMP_SRC=null;
 async function importTable(key,file,preset){
-  const m=M[key];
+  const m=M[key]; IMP_SRC=preset?preset.src||null:file||null;
   if(preset){ const sheets=preset.sheets; return importTableUI(key,m,sheets,preset.name||'ficheiro',preset.after); }
-  if(!file){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls,.ods,.csv'; inp.onchange=()=>inp.files[0]&&importTable(key,inp.files[0]); inp.click(); return; }
-  let sheets; try{ sheets=await readSheets(file); }catch(e){ toast('Não foi possível ler o ficheiro: '+(e.message||e),6000); return; }
+  if(key==='registos'||key==='modelos'){ if(!file){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf,image/*'; inp.onchange=()=>inp.files[0]&&importModelo(inp.files[0]); inp.click(); return; } return importModelo(file); }
+  if(!file){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf'; inp.onchange=()=>inp.files[0]&&importTable(key,inp.files[0]); inp.click(); return; }
+  let sheets; try{ if(/\.(xlsx|xls|ods|csv)$/i.test(file.name)) sheets=await readSheets(file); else { sheets={}; (await readTables(file)).forEach(t=>sheets[t.name]=t.rows); } }catch(e){ toast('Não foi possível ler o ficheiro: '+(e.message||e),6000); return; }
+  if(!Object.keys(sheets).length){ toast('Não encontrei tabelas neste ficheiro — foi guardado no arquivo (Documentos).',6000); try{ await archiveOrig(file,[key]); save(); render(); }catch(e){} return; }
   return importTableUI(key,m,sheets,file.name);
 }
 let IMPORT_RUN=null;
 function importTableUI(key,m,sheets,fname,after){
-  const file={name:fname};
+  const file={name:fname}; const src=IMP_SRC; IMP_SRC=null;
+  sheets=Object.fromEntries(Object.entries(sheets).map(([n,r])=>[n,collapseMonths(r,n)]));
   const names=Object.keys(sheets); if(!names.length){ toast('Ficheiro sem dados'); return; }
   const tg=mapTargets(m);
   const root=modal('Importar para «'+m.t+'»','<p class="sm">Ficheiro: <b>'+esc(file.name)+'</b>. A app leu os cabeçalhos do ficheiro e associou cada coluna a um campo. Confirme: as colunas sem campo correspondente são guardadas como <b>dados extra</b> do registo (nada se perde), ou escolha «ignorar».</p>'+
@@ -2375,6 +2400,7 @@ function importTableUI(key,m,sheets,fname,after){
       m.f.forEach(x=>{ if(rec[x.k]==null&&x.def&&x.t!=='sig') rec[x.k]=x.def(); });
       if(m.f.filter(x=>x.req&&x.t!=='sig').some(x=>rec[x.k]==null||rec[x.k]===''||(Array.isArray(rec[x.k])&&!rec[x.k].length))){ skip++; return; }
       if(m.compute) m.compute(rec); D(key).push(rec); n++; });
+    if(src&&(n||u)) saveOrig(key,src,fname);
     save(); closeModal(1); render(); if(after) setTimeout(after,50);
     toast(n+' registo(s) importado(s)'+(u?' · '+u+' atualizado(s)':'')+(skip?' · '+skip+' linha(s) sem «'+m.f.filter(x=>x.req&&x.t!=='sig').map(x=>x.l).join(' / ')+'» (não importadas)':'')+(Object.keys(created).length?' · criados: '+Object.entries(created).map(([kk,c])=>c+' em '+M[kk].t).join(', '):''),8000);
   };
@@ -2426,16 +2452,30 @@ function kvMerge(T,fname){ const K=T.map(t=>({t,k:kvSheet(t.rows)})); const ks=K
   const used=new Set(use.map(x=>x.t)); const out=T.filter(t=>!used.has(t));
   out.unshift({name:'Fichas (uma por folha: '+use.length+')',rows:[[ (fname||'')+' — fichas por folha' ],head,...rows],kv:1});
   return out; }
+const MES_RX=/^(jan|fev|feb|mar|abr|apr|mai|may|jun|jul|ago|aug|set|sep|out|oct|nov|dez|dec)[a-z]*\.?$/;
+const MES_IDX={jan:0,fev:1,feb:1,mar:2,abr:3,apr:3,mai:4,may:4,jun:5,jul:6,ago:7,aug:7,set:8,sep:8,out:9,oct:9,nov:10,dez:11,dec:11};
+function collapseMonths(rows,title){ if(!rows||!rows.length) return rows; const hi=headerRow(rows); const H=(rows[hi]||[]).map(c=>norm(String(c??'')));
+  let mc=H.map((h,i)=>MES_RX.test(h)?i:-1).filter(i=>i>=0);
+  let hr=hi; if(mc.length<6&&rows[hi+1]){ const H2=rows[hi+1].map(c=>norm(String(c??''))); const m2=H2.map((h,i)=>MES_RX.test(h)?i:-1).filter(i=>i>=0); if(m2.length>=6){ mc=m2; hr=hi+1; } }
+  if(mc.length<6) return rows;
+  const Hr=rows[hr].map(c=>norm(String(c??''))); const cal=/calibr/.test(norm(title||'')+' '+rows.slice(0,hr).map(r=>(r||[]).join(' ')).join(' ').toLowerCase());
+  const isOn=v=>{ const t=String(v??'').trim(); return t&&!/^(-|—|0|n|nao|não|no)$/i.test(t); };
+  const W=Math.max(...rows.slice(hi).map(r=>(r||[]).length)); const keep=[...Array(W).keys()].filter(j=>!mc.includes(j)); const top=hr>hi?(rows[hi]||[]):[];
+  const out=rows.map((r,i)=>{ r=r||[]; if(i<hr) return r; const base=keep.map(j=>r[j]??'');
+    if(i===hr) return keep.map(j=>String(r[j]??'').trim()?r[j]:(top[j]??'')).concat([cal?'Meses calibração':'Meses previstos']);
+    return base.concat([mc.filter(j=>isOn(r[j])).map(j=>MESES[MES_IDX[Hr[j].slice(0,3)]]).join(', ')]); });
+  if(hr>hi) out.splice(hi,1); return out; }
 async function readTables(file,prog){ const n=file.name.toLowerCase(); let T=[];
   if(/\.(xlsx|xls|ods|csv)$/.test(n)){ const sh=await readSheets(file); Object.entries(sh).forEach(([nm,rows])=>{ if(rows.some(r=>r.some(c=>String(c).trim()))) T.push({name:nm,rows}); }); }
   else if(n.endsWith('.docx')){ await loadScript(LIB.docx); const r=await mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()}); const docH=new DOMParser().parseFromString(r.value,'text/html'); let lastTitle='';
     [...docH.body.children].forEach(el=>{ if(el.tagName==='TABLE'){ const rows=[...el.querySelectorAll('tr')].map(tr=>[...tr.children].map(td=>td.textContent.replace(/\s+/g,' ').trim())); if(rows.length) T.push({name:lastTitle||('Tabela '+(T.length+1)),rows}); } else { const t=el.textContent.trim(); if(t&&t.length<120) lastTitle=t; } }); }
   else if(n.endsWith('.pdf')){ (await pdfRows(file,prog)).forEach(t=>T.push(t)); }
+  T=T.map(t=>({...t,rows:collapseMonths(t.rows,t.name)}));
   if(/\.(xlsx|xls|ods)$/.test(n)&&T.length>1) T=kvMerge(T,file.name); else if(/\.(xlsx|xls|ods)$/.test(n)&&T.length===1) T=kvMerge(T,file.name);
   return T; }
 function smartImport(){ const inp=document.createElement('input'); inp.type='file'; inp.multiple=true; inp.accept='.xlsx,.xls,.ods,.csv,.docx,.pdf'; inp.onchange=async()=>{ const files=[...inp.files]; if(!files.length) return;
   const st=modal('A analisar os ficheiros','<p id="smSt" class="sm">A ler…</p>',[{l:'Cancelar',fn:()=>closeModal(2)}],2); const prog=t=>{ const e=st.querySelector('#smSt'); if(e) e.textContent=t; };
-  const tabs=[]; for(const f of files){ prog('A ler '+f.name+'…'); try{ (await readTables(f,prog)).forEach(t=>{ const c=classifyTable(t.name,t.rows); const data=t.rows.slice(c.hi+1).filter(r=>r.some(x=>String(x).trim())).length; if(data) tabs.push({...t,file:f.name,...c,data}); }); }catch(e){ toast(f.name+': '+(e.message||e),6000); } }
+  const tabs=[]; for(const f of files){ prog('A ler '+f.name+'…'); try{ (await readTables(f,prog)).forEach(t=>{ const c=classifyTable(t.name,t.rows); const data=t.rows.slice(c.hi+1).filter(r=>r.some(x=>String(x).trim())).length; if(data) tabs.push({...t,file:f.name,fobj:f,...c,data}); }); }catch(e){ toast(f.name+': '+(e.message||e),6000); } }
   closeModal(2); if(!tabs.length){ toast('Não encontrei tabelas com dados nos ficheiros'); return; }
   const mods=Object.keys(M).filter(k=>lvl(k)>=3&&!['verificacoes','registos'].includes(k)).sort((a,b)=>M[a].t.localeCompare(M[b].t));
   const root=modal('Importação inteligente','<p class="sm">Encontrei '+tabs.length+' tabela(s). Para cada uma sugiro o destino pelo conteúdo (cabeçalhos e título). Confirme ou mude; a seguir revê as colunas de cada uma. Equipamentos que apareçam em várias folhas (lista, plano de manutenção, calibrações) são juntados no mesmo equipamento.</p>'+
@@ -2444,7 +2484,7 @@ function smartImport(){ const inp=document.createElement('input'); inp.type='fil
       if(!q.length){ toast('Escolha o destino de pelo menos uma tabela'); return; }
       const order=['fornecedores','clientes','colaboradores','materias','produtos','equipamentos','planoAnalises','higPlano','paramControlo','epis','formacao','manutencao','analises'];
       q.sort((a,b)=>((order.indexOf(a.k)+1)||99)-((order.indexOf(b.k)+1)||99)); closeModal(1); let i=0;
-      IMPORT_RUN=uid(); const next=()=>{ if(i>=q.length){ IMPORT_RUN=null; toast('Importação concluída',4000); return; } const x=q[i++]; importTable(x.k,null,{sheets:{[x.t.file+' › '+x.t.name]:x.t.rows},name:x.t.file+' › '+x.t.name+' ('+i+' de '+q.length+')',after:next}); };
+      IMPORT_RUN=uid(); const next=()=>{ if(i>=q.length){ IMPORT_RUN=null; toast('Importação concluída',4000); return; } const x=q[i++]; importTable(x.k,null,{src:x.t.fobj,sheets:{[x.t.file+' › '+x.t.name]:x.t.rows},name:x.t.file+' › '+x.t.name+' ('+i+' de '+q.length+')',after:next}); };
       next(); }}],1); }; inp.click(); }
 
 /* =====================================================================
@@ -2649,7 +2689,7 @@ const HELP={
  temperaturas:['Registo de temperaturas dos equipamentos de frio.',
   ['Use <b>Registar todos os equipamentos</b> para escrever todas as câmaras de uma vez.',
    'A regularidade de cada câmara define-se em Regularidade dos registos.']],
- planoManut:['Plano de manutenção preventiva.',['Em cada equipamento preencha a <b>periodicidade da manutenção</b> e <b>o que fazer</b> (ou toque em Sugerir).','Ao registar a intervenção, a última data e a próxima atualizam sozinhas. Os atrasos aparecem no Painel.']],
+ planoManut:['Plano de manutenção preventiva.',['<b>Este mês</b> mostra só os equipamentos com manutenção prevista no mês — toque para ver o que fazer e registar. <b>Plano anual</b> mostra a grelha dos 12 meses como no documento original.','Em cada equipamento escolha os <b>meses previstos</b> (ou a periodicidade) e <b>o que fazer</b>. Ao importar o seu plano em Excel, as colunas Jan…Dez marcadas com X passam a ser os meses previstos.','Ao registar a intervenção, a última data e a próxima atualizam sozinhas. Os atrasos aparecem no Painel.']],
  planoCalib:['Plano de calibração separado da manutenção.',['No equipamento escolha «Requer calibração = Sim», a periodicidade, a entidade e o <b>critério de aceitação</b> (ex.: erro ≤ ±0,5 °C).','Ao registar, escreva a leitura do padrão e a do equipamento: a app calcula o erro e marca não conforme se passar o critério.']],
  avalFornecedores:['Avaliação de fornecedores por critérios.',['Escolha o fornecedor: a app mostra as receções e NC dos últimos 12 meses e sugere a nota de qualidade.','Dê nota 1 a 5 a cada critério. ≥ 80 % = A, 60–79 % = B, < 60 % = C.','A classificação e a próxima avaliação (A: 1 ano, B: 6 meses, C: 3 meses) passam para a ficha do fornecedor.']],
  equipamentos:['Equipamentos, limites de temperatura e manutenção/calibração.',
@@ -2701,6 +2741,7 @@ function importHazard(e,h,asPcc){ const x={id:uid(),etapa:e.id,cat:h.cat||'B',pe
   else { if(h.P) o.P=h.P; if(h.G) o.G=h.G; o.q1='S'; o.q2='N'; o.q3='S'; o.q4='S'; o.causa=(o.causa?o.causa+' · ':'')+'Importado do HACCP da empresa — confirme a árvore de decisão'; }
   S.ha.ov[key]=o; }
 const HACCP_DEST=()=>Object.keys(M).filter(k=>lvl(k)>=3&&!['verificacoes','registos','guiasSP'].includes(k)).sort((a,b)=>M[a].t.localeCompare(M[b].t));
+document.addEventListener('change',e=>{ const x=e.target&&e.target.closest&&e.target.closest('[data-ask]'); if(!x) return; const w=document.querySelector('[data-fqw="'+x.dataset.ask+'"]'); if(w) w.style.display=(x.value==='__modelo'||x.value==='modelo')?'flex':'none'; });
 async function haccpImport(){ const inp=document.createElement('input'); inp.type='file'; inp.multiple=true; inp.accept='.pdf,.docx,.xlsx,.xls,.ods,.csv,.txt,image/*'; inp.onchange=async()=>{ const files=[...inp.files]; if(!files.length) return;
   const st=modal('A analisar a documentação','<p id="hiSt" class="sm">A ler…</p><div class="prog"><i id="hiPb" style="width:0%"></i></div>',[{l:'Cancelar',fn:()=>closeModal(2)}],2); const prog=t=>{ const e=st.querySelector('#hiSt'); if(e) e.textContent=t; };
   const props=[]; let fi=0;
@@ -2709,13 +2750,14 @@ async function haccpImport(){ const inp=document.createElement('input'); inp.typ
     if(!text&&/^image\//.test(f.type)){ try{ text=await ocr(f,prog); }catch(e){} }
     if(!text&&f.name.toLowerCase().endsWith('.pdf')){ try{ text=await pdfText(f,prog); }catch(e){} }
     const kinds=docKind(f.name,text||tabs.map(t=>t.rows.map(r=>r.join(' ')).join(' ')).join(' '));
-    props.push({f,kind:'arquivo',tipoG:guessTipo(f.name+' '+kinds.join(' ')),label:'Arquivar em Documentos e legislação ('+guessTipo(f.name+' '+kinds.join(' '))+')',on:true,run:async(tp)=>{ const id=uid(); await FDB.put(id,f); if(text) await FDB.put('t:'+id,text).catch(()=>{}); D('documentos').push({id:uid(),_c:nowLocal(),_imp:1,titulo:f.name.replace(/\.[^.]+$/,''),tipo:tp||guessTipo(f.name+' '+kinds.join(' ')),data:today(),docs:[{id,name:f.name,type:f.type,size:f.size}]}); return 'arquivado'; }});
+    props.push({f,kind:'arquivo',tipoG:guessTipo(f.name+' '+kinds.join(' ')),label:'Arquivar em Documentos e legislação ('+guessTipo(f.name+' '+kinds.join(' '))+')',on:true,run:async(tp,menus)=>{ const d=await archiveOrig(f,menus||[],{tipo:tp||guessTipo(f.name+' '+kinds.join(' ')),text}); f._docId=d.id; return 'arquivado'; }});
     let usedTables=new Set();
     tabs.forEach((t,ti)=>{ const pcc=parsePccTable(t.rows); if(pcc){ usedTables.add(ti); props.push({f,kind:'pcc',label:pcc.length+' PCC → Análise de perigos ('+pcc.map(x=>x.etapa).slice(0,4).join(', ')+(pcc.length>4?'…':'')+')',on:true,data:pcc}); return; }
       const hz=parseHazTable(t.rows); if(hz){ usedTables.add(ti); props.push({f,kind:'perigos',label:hz.length+' perigo(s) → Análise de perigos',on:true,data:hz}); } });
     const steps=(kinds.includes('fluxo')||kinds.includes('haccp'))?parseSteps(text):[];
     if(steps.length>=3) props.push({f,kind:'fluxo',label:steps.length+' etapas → Fluxograma: '+steps.slice(0,5).join(' › ')+(steps.length>5?'…':''),on:true,data:steps});
-    tabs.forEach((t,ti)=>{ if(usedTables.has(ti)) return; const c=classifyTable(t.name,t.rows); const data=t.rows.slice(c.hi+1).filter(r=>r.some(x=>String(x).trim())).length; if(!data) return;
+    tabs.forEach((t,ti)=>{ if(usedTables.has(ti)) return; const c=classifyTable(t.name,t.rows); const data=t.rows.slice(c.hi+1).filter(r=>r.some(x=>String(x).trim())).length;
+      if(!data){ const hc=(t.rows[c.hi]||[]).filter(x=>String(x??'').trim()).length; if(hc>=2) props.push({f,kind:'tabela',ask:true,sure:true,def:'__modelo',label:'Impresso em branco «'+t.name+'» (colunas: '+(t.rows[c.hi]||[]).filter(Boolean).slice(0,6).join(', ')+') → novo tipo de registo',on:true,key:'',tab:t}); return; }
       const def=c.key||(kinds.includes('registo')?'__modelo':''); const sure=!!c.key&&c.score>=6;
       props.push({f,kind:'tabela',ask:true,sure,def,label:'Tabela «'+t.name+'» ('+data+' linhas: '+(c.head||[]).slice(0,5).join(', ')+')',on:true,key:c.key,tab:t}); });
     const onlyArch=!props.some(p=>p.f===f&&p.kind!=='arquivo');
@@ -2728,26 +2770,32 @@ async function haccpImport(){ const inp=document.createElement('input'); inp.typ
     [...new Set(props.map(p=>p.f))].map(f=>'<div class="card sm" style="margin:8px 0;padding:10px 12px"><b>'+esc(f.name)+'</b>'+props.filter(p=>p.f===f).map(p=>{ const i=props.indexOf(p);
       if(p.kind==='arquivo') return '<label style="display:flex;gap:8px;align-items:center;padding:5px 0;flex-wrap:wrap"><input type="checkbox" data-pi="'+i+'" checked style="width:auto"> <span>Arquivar em Documentos como</span><select data-ask="'+i+'" style="max-width:200px">'+DOC_TIPOS.map(t=>'<option'+(t===p.tipoG?' selected':'')+'>'+t+'</option>').join('')+'</select></label>';
       if(p.ask){ const opts=p.kind==='texto'?[['','— só arquivar —'],['fluxo','Fluxograma (cada linha é uma etapa)'],['modelo','Modelo de registo (cada linha é um item a verificar)']]:[['','— não importar —'],['__modelo','Modelo de registo (é um impresso)'],...HACCP_DEST().map(k=>[k,M[k].t])];
-        return '<div style="padding:6px 0;border-top:1px dashed var(--line)"><label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" data-pi="'+i+'" checked style="width:auto;margin-top:3px"> <span>'+esc(p.label)+'</span></label>'+(!p.sure?'<div class="alert warn" style="margin:4px 0"><i>?</i><span>'+(p.def?'Não tenho a certeza — confirme o destino:':'Não sei onde colocar — escolha o destino:')+'</span></div>':'')+'<select data-ask="'+i+'" style="margin-top:4px">'+opts.map(([v,l])=>'<option value="'+v+'"'+(v===p.def?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select></div>'; }
+        return '<div style="padding:6px 0;border-top:1px dashed var(--line)"><label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" data-pi="'+i+'" checked style="width:auto;margin-top:3px"> <span>'+esc(p.label)+'</span></label>'+(!p.sure?'<div class="alert warn" style="margin:4px 0"><i>?</i><span>'+(p.def?'Não tenho a certeza — confirme o destino:':'Não sei onde colocar — escolha o destino:')+'</span></div>':'')+'<select data-ask="'+i+'" style="margin-top:4px">'+opts.map(([v,l])=>'<option value="'+v+'"'+(v===p.def?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select>'+
+          '<label class="sm" data-fqw="'+i+'" style="display:'+(p.def==='__modelo'||p.def==='modelo'?'flex':'none')+';gap:6px;align-items:center;margin-top:6px">Regularidade do registo <select data-freq="'+i+'" style="max-width:180px">'+FREQS.map(x=>'<option'+(x==='Diária'?' selected':'')+'>'+x+'</option>').join('')+'</select></label></div>'; }
       return '<label style="display:flex;gap:8px;align-items:flex-start;padding:5px 0"><input type="checkbox" data-pi="'+i+'" checked style="width:auto;margin-top:3px"> <span>'+esc(p.label)+'</span></label>'; }).join('')+'</div>').join('');
   modal('Importar a documentação HACCP',body,[{l:'Cancelar',fn:()=>closeModal(1)},{l:'Importar selecionados',c:'p',fn:async r=>{ const sel=[...r.querySelectorAll('[data-pi]:checked')].map(x=>props[+x.dataset.pi]); const proc=r.querySelector('#hiProc').value.trim()||'Principal'; closeModal(1);
     r.querySelectorAll('[data-ask]').forEach(x=>{ const p=props[+x.dataset.ask]; p.choice=x.value; });
+    r.querySelectorAll('[data-freq]').forEach(x=>{ props[+x.dataset.freq].freq=x.value; });
     sel.forEach(p=>{ if(p.kind==='tabela'){ if(p.choice==='__modelo'){ p.kind='modelo'; } else if(p.choice){ p.key=p.choice; } else p.kind='skip'; }
       if(p.kind==='texto'){ if(p.choice==='fluxo'){ p.kind='fluxo'; p.data=String(p.text).split(/\n+/).map(x=>x.replace(/^\s*\d+\s*[.)\-–:]\s*/,'').trim()).filter(x=>x.length>=3&&x.length<=70&&!/fluxograma|diagrama|^etapas|linha de|processo de fabrico|^pagina|^data\b/i.test(norm(x))).slice(0,40); } else if(p.choice==='modelo') p.kind='modelo'; else p.kind='skip'; } });
+    /* o original fica sempre no arquivo e aparece em todos os menus para onde foi importado */
+    const menusOf=f=>[...new Set(sel.filter(p=>p.f===f).flatMap(p=>p.kind==='tabela'&&p.key?relOf(p.key):p.kind==='modelo'?['registos','modelos']:['pcc','perigos','fluxo'].includes(p.kind)?['analise','etapas','plano']:[]))];
+    [...new Set(sel.map(p=>p.f))].forEach(f=>{ if(sel.some(p=>p.f===f&&p.kind!=='arquivo'&&p.kind!=='skip')&&!sel.some(p=>p.f===f&&p.kind==='arquivo')){ const a=props.find(p=>p.f===f&&p.kind==='arquivo'); if(a) sel.push(a); } });
     const ORD={arquivo:0,fluxo:1,perigos:2,pcc:3,modelo:4,tabela:5,skip:9}; sel.sort((a,b)=>ORD[a.kind]-ORD[b.kind]); const only=r.querySelector('#hiOnly').checked; const touched=new Set();
     const res={arquivo:0,etapas:0,pcc:0,perigos:0,modelos:0}; const queue=[];
     for(const p of sel){ try{
-      if(p.kind==='arquivo'){ await p.run(p.choice); res.arquivo++; }
+      if(p.kind==='arquivo'){ await p.run(p.choice,menusOf(p.f)); res.arquivo++; }
       else if(p.kind==='fluxo'){ p.data.forEach(n=>{ if(!findEtapa(n,proc)){ ensureEtapa(n,proc); res.etapas++; } }); }
       else if(p.kind==='pcc'){ p.data.forEach(h=>{ const e=ensureEtapa(h.etapa,proc); touched.add(e.id); importHazard(e,h,true); res.pcc++; }); }
       else if(p.kind==='perigos'){ p.data.forEach(h=>{ if(!h.etapa) return; const e=ensureEtapa(h.etapa,proc); touched.add(e.id); importHazard(e,h,false); res.perigos++; }); }
-      else if(p.kind==='modelo'){ const md=p.tab?modeloFromTable(p.tab.rows,p.f.name.replace(/\.[^.]+$/,'')):modeloFromLines(p.text.split('\n'),p.f.name.replace(/\.[^.]+$/,'')); if(md.campos.length){ D('modelos').push({id:uid(),_c:nowLocal(),_imp:1,nome:md.nome,sector:'Específico da empresa',frequencia:'Diária',itens:md.itens,ativo:'Sim',campos:md.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min||'',max:c.max||'',opcoes:c.opcoes||''}))}); res.modelos++; } }
+      else if(p.kind==='modelo'){ const md=p.tab?modeloFromTable(p.tab.rows,p.f.name.replace(/\.[^.]+$/,'')):modeloFromLines(p.text.split('\n'),p.f.name.replace(/\.[^.]+$/,'')); if(md.campos.length){ const cs=md.campos.map(c=>({id:uid(),nome:c.nome,tipo:c.tipo,unidade:c.unidade||'',min:c.min||'',max:c.max||'',opcoes:c.opcoes||''})); const od=D('documentos').find(d=>d.id===p.f._docId);
+          D('modelos').push({id:uid(),_c:nowLocal(),_imp:1,nome:md.nome,sector:'Específico da empresa',frequencia:p.freq||'Diária',itens:md.itens,ativo:'Sim',campos:cs,layout:layoutFix(md.layout,cs),origDoc:p.f._docId||'',docs:od?[{...od.docs[0],_link:1}]:[]}); res.modelos++; } }
       else if(p.kind==='tabela') queue.push(p);
     }catch(e){ toast(p.f.name+': '+(e.message||e),6000); } }
     if(only&&touched.size) computeHA().rows.filter(x=>x.src==='kb'&&touched.has(x.etapa.id)).forEach(x=>{ S.ha.ov[x.key]={...(S.ha.ov[x.key]||{}),na:true}; });
     save(); render();
     const msg='Importado: '+[res.arquivo&&res.arquivo+' documento(s) arquivado(s)',res.etapas&&res.etapas+' etapa(s)',res.pcc&&res.pcc+' PCC',res.perigos&&res.perigos+' perigo(s)',res.modelos&&res.modelos+' modelo(s) de registo'].filter(Boolean).join(' · ');
-    if(queue.length){ toast(msg+(msg?' — ':'')+'a seguir: confirmar '+queue.length+' tabela(s)',6000); IMPORT_RUN=uid(); let i=0; const next=()=>{ if(i>=queue.length){ IMPORT_RUN=null; toast('Importação concluída. Reveja a Análise de perigos e o Fluxograma.',7000); return; } const x=queue[i++]; importTable(x.key,null,{sheets:{[x.f.name+' › '+x.tab.name]:x.tab.rows},name:x.f.name+' › '+x.tab.name+' ('+i+' de '+queue.length+')',after:next}); }; next(); }
+    if(queue.length){ toast(msg+(msg?' — ':'')+'a seguir: confirmar '+queue.length+' tabela(s)',6000); IMPORT_RUN=uid(); let i=0; const next=()=>{ if(i>=queue.length){ IMPORT_RUN=null; toast('Importação concluída. Reveja a Análise de perigos e o Fluxograma.',7000); return; } const x=queue[i++]; importTable(x.key,null,{src:x.f,sheets:{[x.f.name+' › '+x.tab.name]:x.tab.rows},name:x.f.name+' › '+x.tab.name+' ('+i+' de '+queue.length+')',after:next}); }; next(); }
     else { toast((msg||'Nada importado')+'. Reveja a Análise de perigos e o Fluxograma.',8000); if(res.pcc||res.perigos||res.etapas) location.hash='#/analise'; } }}],1); }; inp.click(); }
 /* ---------- Pré-visualizar Word / Excel ---------- */
 async function previewFile(blob,name){
@@ -2786,12 +2834,12 @@ function viewImportar(){
    '<label class="f"><span>Próxima revisão (opcional)</span><input type="date" id="idRev"></label></div><label class="sm" style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><input type="checkbox" id="idTxt" checked style="width:auto"> Extrair texto para pesquisa</label>'+
    '<button class="btn p" id="idGo">Importar documentos</button><div id="idLog" class="sm" style="margin-top:10px"></div></div>':'')+
    (mods.length?'<div class="card" style="border:2px solid var(--pri)"><b>Importar o HACCP que a empresa já tem</b><p class="sm mut">Escolha os ficheiros — um a um ou todos de uma vez (plano HACCP, análise de perigos, fluxograma, planos de higienização, pragas, análises, manutenção, formação, listas de fornecedores e equipamentos, impressos de registo, procedimentos). Aceita PDF, Word, Excel e fotos/digitalizações. A app lê cada documento, mostra o que encontrou e coloca cada coisa no sítio certo: etapas no fluxograma, perigos e PCC (com limites, monitorização e ações corretivas) na análise de perigos, tabelas nos planos e registos, impressos como modelos de registo, e arquiva todos os originais.</p><button class="btn p" id="hiGo">Escolher ficheiros do HACCP</button></div>':'')+
-   (mods.length?'<div class="card"><b>Importação inteligente (recomendado)</b><p class="sm mut">Escolha um ou vários ficheiros Excel (todas as folhas), Word (tabelas) ou PDF. A app analisa cada folha/tabela e sugere onde importar: listas de equipamentos, planos de manutenção e calibração (com o que fazer em cada um), planos de análises, higienização, fornecedores, clientes, colaboradores, formação, matérias-primas…</p><button class="btn p" id="smGo">Escolher ficheiros e analisar</button></div>':'')+
+   (mods.length?'<div class="card"><b>Importar vários ficheiros e distribuir pelos menus</b><p class="sm mut">Escolha um ou vários ficheiros Excel (todas as folhas), Word (tabelas) ou PDF. A app analisa cada folha/tabela e sugere onde importar: listas de equipamentos, planos de manutenção e calibração (com o que fazer em cada um), planos de análises, higienização, fornecedores, clientes, colaboradores, formação, matérias-primas…</p><button class="btn p" id="smGo">Escolher ficheiros e analisar</button></div>':'')+
    (mods.length?'<div class="card"><b>2. Importar dados de Excel ou CSV para um registo</b><p class="sm mut">Ex.: lista de fornecedores, colaboradores ou matérias-primas, folhas antigas de temperaturas, plano de higienização. A seguir escolhe que coluna corresponde a cada campo.</p>'+
    '<div class="grid"><label class="f"><span>Importar para</span><select id="itMod">'+mods.map(k=>'<option value="'+k+'">'+esc(M[k].t)+'</option>').join('')+'</select></label><label class="f"><span>Ficheiro (.xlsx, .xls, .csv)</span><input type="file" id="itFile" accept=".xlsx,.xls,.ods,.csv"></label></div></div>':'')+
    '<div class="card"><b>3. Pesquisar no conteúdo dos documentos</b><div class="row" style="margin-top:8px"><input id="isQ" type="search" placeholder="Ex.: Listeria, cloro, devolução…" style="max-width:360px"><button class="btn" id="isGo">Pesquisar</button></div><div id="isRes" style="margin-top:8px"></div></div>';
 }
-function bindImportar(){ const sg=document.getElementById('smGo'); if(sg) sg.onclick=smartImport; const hg=document.getElementById('hiGo'); if(hg) hg.onclick=haccpImport;
+function bindImportar(){ const sg=document.getElementById('smGo'); if(sg) sg.onclick=haccpImport; const hg=document.getElementById('hiGo'); if(hg) hg.onclick=haccpImport;
   const go=document.getElementById('idGo');
   if(go) go.onclick=async()=>{ const files=[...document.getElementById('idFiles').files]; if(!files.length){ toast('Escolha os ficheiros'); return; }
     const tipo=document.getElementById('idTipo').value, rev=document.getElementById('idRev').value, txt=document.getElementById('idTxt').checked, log=document.getElementById('idLog'); go.disabled=true; let ok=0;
@@ -2824,11 +2872,12 @@ function bindView(key){
   const qd=v.querySelector('#qDiar'); if(qd) qd.onclick=registosDiarios;
   const qp=v.querySelector('#qProdDia'); if(qp&&lvl('lotes')<2) qp.remove(); else if(qp) qp.onclick=prodDia;
   const qs=v.querySelector('#qScan'); if(qs&&lvl('rececao')<2) qs.remove(); else if(qs) qs.onclick=()=>{ const r=openForm('rececao'); openScanner((code,msg)=>applyScan(r,code,msg),true); };
+  origBind(key);
   if(M[key]){ if(M[key].topBind) M[key].topBind(v);
     v.querySelectorAll('tbody tr[data-id]').forEach(tr=>tr.onclick=e=>{ if(e.target.closest('[data-del]')) return; const cl=e.target.closest('[data-clip]'); if(cl){ quickFiles(key,cl.dataset.clip); return; } openForm(key,tr.dataset.id); });
     v.querySelectorAll('[data-del]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); deleteRecord(key,b.dataset.del); });
     const b=s=>v.querySelector('[data-act="'+s+'"]');
-    if(b('new')) b('new').onclick=()=>openForm(key); b('csv').onclick=()=>exportCSV(key); if(b('csvin')) b('csvin').onclick=()=>importTable(key); b('print').onclick=()=>window.print();
+    if(b('new')) b('new').onclick=()=>openForm(key); b('csv').onclick=()=>exportCSV(key); if(b('csvin')) b('csvin').onclick=()=>importTable(key); b('print').onclick=()=>askVersion(key,()=>window.print());
     if(b('verif')) b('verif').onclick=()=>{ const lv=lastVerif(key); const ds=D(key).map(recDate).filter(Boolean).sort(); openForm('verificacoes',null,{registo:key,de:lv?addDays(lv.ate,1):(ds[0]||today()),ate:today()}); };
     if(b('modelo')) b('modelo').onclick=pickModelo;
     if(b('newscan')) b('newscan').onclick=()=>{ const r=openForm('rececao'); openScanner((code,msg)=>applyScan(r,code,msg),true); };
@@ -2838,7 +2887,7 @@ function bindView(key){
     if(b('guiaMulti')) b('guiaMulti').onclick=()=>{ const pend=D('residuos').filter(x=>x.estadoSP!=='Expedido'&&!x.guia); if(!pend.length){ toast('Não há saídas em armazenagem'); return; }
       const cats=[...new Set(pend.map(spCatOfRes))]; const root=modal('Emitir guia','<p class="sm">Escolha as saídas a incluir (da mesma categoria).</p>'+cats.map(c=>'<h3 style="margin:10px 0 4px">'+esc(c)+'</h3>'+pend.filter(x=>spCatOfRes(x)===c).map(x=>'<label style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-gr="'+x.id+'" data-cat="'+esc(c)+'" style="width:auto"> '+fDate(x.data)+' · '+esc(lbl('materias',x.materia)||x.tipo)+' · '+esc(x.quantidade)+' '+esc(x.unidade||'')+(x.lote?' · lote '+esc(x.lote):'')+'</label>').join('')).join(''),
         [{l:'Cancelar',fn:()=>closeModal(1)},{l:'Continuar',c:'p',fn:r=>{ const sel=[...r.querySelectorAll('[data-gr]:checked')]; if(!sel.length){ toast('Escolha pelo menos uma'); return; } if(new Set(sel.map(x=>x.dataset.cat)).size>1){ toast('Uma guia só pode ter uma categoria'); return; } closeModal(1); openGuiaFrom(sel.map(x=>x.dataset.gr)); }}],1); };
-    if(b('smart')) b('smart').onclick=smartImport;
+    if(b('smart')) b('smart').onclick=haccpImport;
     if(b('gen')) b('gen').onclick=()=>genPick(key);
     if(b('blank')) b('blank').onclick=()=>key==='modelos'||key==='registos'?pickBlankModelo():printBlank(key);
     if(b('modlib')) b('modlib').onclick=modLib;
@@ -3212,7 +3261,7 @@ function viewPlano(){
 function viewStock(){
   const lots=stockLots(); const mats=sorted('materias');
   let h='<h1>Stock</h1><p class="sub">Calculado a partir das receções, menos o consumido nas produções (pelas receitas) e os movimentos de stock.</p>';
-  h+='<div class="row noprint" style="margin-bottom:12px"><button class="btn p" data-new="rececao">+ Receção</button><button class="btn" data-new="lotes">+ Produção</button><button class="btn" id="qProdDia">Produção do dia</button><button class="btn" data-new="ajustes">+ Movimento / quebra</button><span class="sp"></span><button class="btn s" data-print>Imprimir</button></div>';
+  h+='<div class="row noprint" style="margin-bottom:12px"><button class="btn p" data-new="rececao">+ Receção</button><button class="btn" data-new="lotes">+ Produção</button><button class="btn" data-new="ajustes">+ Movimento / quebra</button><span class="sp"></span><button class="btn s" data-print>Imprimir</button></div>';
   h+='<input type="search" id="stQ" placeholder="Pesquisar matéria-prima, lote, fornecedor ou produto…" style="max-width:340px;margin-bottom:10px">';
   const pl=prodLots().filter(p=>p.tot>0);
   if(pl.length) h+='<h2>Produto acabado</h2><div class="tw" style="margin-bottom:14px"><table><thead><tr><th>Lote</th><th>Produto</th><th>Produção</th><th>Validade</th><th>Produzido</th><th>Expedido</th><th>Disponível</th><th>Estado</th></tr></thead><tbody>'+
@@ -3299,7 +3348,7 @@ function pccInfoHTML(key){ const x=pccPlanList().find(p=>p.key===key); if(!x) re
   return '<b>'+esc(x.code)+' — '+esc(x.etapa)+'</b><br>Limite crítico: <b>'+esc(x.pd.limite||'—')+'</b>'+(x.pd.monit?'<br>Monitorização: '+esc(x.pd.monit):'')+(x.pd.acao?'<br>Se fora do limite: '+esc(x.pd.acao):''); }
 
 /* ---------- Planos de manutenção e de calibração ---------- */
-function planoEquipHTML(cal){ const eqs=D('equipamentos').filter(e=>e.ativo!=='Não'); const L=lvl('manutencao');
+function planoEquipHTML_old(cal){ const eqs=D('equipamentos').filter(e=>e.ativo!=='Não'); const L=lvl('manutencao');
   const inc=eqs.filter(e=>cal?(e.calibra==='Sim'||num(e.perCalib)):num(e.periodicidade)||e.tarefasManut); const fora=eqs.filter(e=>!inc.includes(e));
   const prox=e=>cal?proxCalib(e):proxEquip(e);
   inc.sort((a,b)=>String(prox(a)||'9').localeCompare(String(prox(b)||'9')));
@@ -3310,10 +3359,139 @@ function planoEquipHTML(cal){ const eqs=D('equipamentos').filter(e=>e.ativo!=='N
     inc.map(e=>'<tr><td><a href="#" data-eq="'+e.id+'"><b>'+esc(e.nome)+'</b></a></td><td>'+esc(e.local||'')+'</td><td>'+esc(e.serie||'')+'</td><td class="sm">'+esc(cal?[e.criterioCalib,e.padrao].filter(Boolean).join(' · '):String(e.tarefasManut||'')).replace(/\n/g,'<br>')+'</td><td>'+(cal?(e.perCalib?e.perCalib+' d':'—'):(e.periodicidade?e.periodicidade+' d':'—'))+'</td><td>'+esc(cal?e.entCalib||'':e.entidade||'')+'</td><td>'+fDate(cal?e.ultimaCalib:e.ultima)+'</td><td>'+(prox(e)?dueBadge(prox(e)):'')+'</td><td class="noprint">'+(L>=2?'<button class="btn s p" data-reg="'+e.id+'">Registar</button>':'')+'</td></tr>').join('')+'</tbody></table></div>';
   if(fora.length) h+='<p class="sm mut noprint">Fora deste plano: '+fora.map(e=>'<a href="#" data-eq="'+e.id+'">'+esc(e.nome)+'</a>').join(', ')+'</p>';
   return h; }
-function bindPlanoEquip(cal){ const v=document.getElementById('view');
+function bindPlanoEquip_old(cal){ const v=document.getElementById('view');
   v.querySelectorAll('[data-eq]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); openForm('equipamentos',a.dataset.eq); });
   v.querySelectorAll('[data-reg]').forEach(b=>b.onclick=()=>{ const e=D('equipamentos').find(x=>x.id===b.dataset.reg)||{};
     openForm('manutencao',null,cal?{equipamento:e.id,tipo:'Calibração',executante:e.entCalib||'',descricao:[e.padrao?'Padrão/método: '+e.padrao:'',e.criterioCalib?'Critério: '+e.criterioCalib:''].filter(Boolean).join('\n')}:{equipamento:e.id,tipo:'Preventiva',executante:e.entidade||'',descricao:e.tarefasManut||''}); }); }
+
+
+/* ---------- Documentos originais importados ---------- */
+const ORIG_ALIAS={planoManut:['equipamentos','manutencao'],planoCalib:['equipamentos','manutencao'],equipamentos:['manutencao'],manutencao:['equipamentos'],higRegisto:['higPlano'],higPlano:['higRegisto'],analises:['planoAnalises'],planoAnalises:['analises'],formacao:['colaboradores'],pragas:[],temperaturas:['equipamentos']};
+const REL_GROUPS=[['equipamentos','manutencao','planoManut','planoCalib','temperaturas'],['higPlano','higRegisto'],['planoAnalises','analises'],['paramControlo','controlos'],['modelos','registos','novoTipo'],['colaboradores','formacao','epiEntregas','epis'],['fornecedores','avalFornecedores','rececao','materias'],['residuos','guiasSP','recetores'],['produtos','receitas','lotes','planeamento'],['etapas','analise','plano','alergenios','pccRegisto']];
+const relOf=k=>[...new Set([k,...REL_GROUPS.filter(g=>g.includes(k)).flat()])];
+function findOrigDoc(file){ return D('documentos').find(d=>(d.docs||[]).some(a=>a.name===file.name&&a.size===file.size)); }
+async function archiveOrig(file,menus,opts){ opts=opts||{}; let d=findOrigDoc(file);
+  if(d){ d.menus=[...new Set([...(d.menus||[]),...menus])]; d._orig=1; d._m=nowLocal(); if(opts.tipo&&!d.tipo) d.tipo=opts.tipo; return d; }
+  const id=uid(); await FDB.put(id,file); if(opts.text) await FDB.put('t:'+id,opts.text).catch(()=>{});
+  d={id:uid(),_c:nowLocal(),_u:CUR?CUR.id:'',_imp:1,_orig:1,titulo:file.name.replace(/\.[^.]+$/,''),tipo:opts.tipo||guessTipo(file.name),data:today(),menus:[...new Set(menus)],obs:opts.fonte?'Importado: '+opts.fonte:'',docs:[{id,name:file.name,type:file.type,size:file.size}]};
+  D('documentos').push(d); if(opts.text) linkDocRecords(d,opts.text); return d; }
+/* fichas técnicas / certificados: ligar ao fornecedor, matéria-prima ou produto citado */
+function linkDocRecords(d,text){ if(!/Ficha|Certificado/.test(d.tipo||'')) return; const hay=norm(d.titulo+' '+String(text||'').slice(0,3000));
+  [['fornecedores','nome'],['materias','nome'],['produtos','nome']].forEach(([k,f])=>D(k).forEach(r=>{ const n=norm(r[f]||''); if(n.length<4||!hay.includes(n)) return;
+    d.menus=[...new Set([...(d.menus||[]),k])]; const ff=fileFields(k)[0]; if(!ff) return; r[ff]=r[ff]||[]; const a=d.docs[0]; if(!r[ff].some(x=>x.id===a.id)){ r[ff].push({...a,_link:1}); r._m=nowLocal(); } })); }
+async function saveOrig(key,file,fonte){ try{ await archiveOrig(file,[key],{fonte:String(fonte||'').replace(/\s*\(\d+ de \d+\)$/,'')}); save(); }catch(e){} }
+function origDocs(k){ const out=[]; const seen=new Set(); const ks=new Set(relOf(k));
+  D('documentos').filter(d=>(d.menus||[]).some(m=>ks.has(m))).forEach(d=>(d.docs||[]).forEach(a=>{ if(!seen.has(a.id)){ seen.add(a.id); out.push({...a,fonte:d.tipo||'',doc:d.id}); } }));
+  [k,...(ORIG_ALIAS[k]||[])].forEach(kk=>{ ((S.pageDocs||{})[kk]||{anexos:[]}).anexos.filter(a=>a.orig).forEach(a=>{ if(!seen.has(a.id)){ seen.add(a.id); out.push(a); } }); }); return out; }
+function origBanner(k){ const o=origDocs(k); if(!o.length||k==='documentos') return ''; return '<div class="card sm noprint" style="padding:10px 14px;background:var(--infob);border-color:transparent">📄 <b>'+(o.length>1?'Documentos originais':'Documento original')+' (arquivo):</b> '+o.map((a,i)=>'<a href="#" data-orig="'+i+'">'+esc(a.name)+'</a>'+(a.fonte?' <span class="mut">('+esc(a.fonte)+')</span>':'')).join(' · ')+' <button class="btn s" data-origdl="1">⬇ Descarregar</button></div>'; }
+function origBind(k){ const v=document.getElementById('view'); const o=origDocs(k);
+  v.querySelectorAll('[data-orig]').forEach(a=>a.onclick=async e=>{ e.preventDefault(); const x=o[+a.dataset.orig]; const b=await FDB.get(x.id).catch(()=>null); if(b) download(b,x.name); else toast('Ficheiro não disponível neste dispositivo'); });
+  v.querySelectorAll('[data-origdl]').forEach(b=>b.onclick=()=>askVersion(k,()=>window.print())); }
+function askVersion(k,appFn){ const o=origDocs(k); if(!o.length){ appFn(); return; }
+  const r=modal('Que versão quer?','<p class="sm">Este menu foi importado de um documento da empresa. Escolha:</p>'+o.map((a,i)=>'<button class="btn" style="display:block;width:100%;margin:6px 0;text-align:left" data-v="'+i+'">📄 Versão original — '+esc(a.name)+(a.fonte?' <span class="mut sm">('+esc(a.fonte)+')</span>':'')+'</button>').join('')+'<button class="btn p" style="display:block;width:100%;margin:6px 0;text-align:left" data-v="app">📱 Versão da app (imprimir / PDF, com os registos atualizados)</button>',[{l:'Cancelar',fn:()=>closeModal(2)}],2);
+  r.querySelectorAll('[data-v]').forEach(b=>b.onclick=async()=>{ closeModal(2); if(b.dataset.v==='app'){ appFn(); return; } const x=o[+b.dataset.v]; const bl=await FDB.get(x.id).catch(()=>null); if(bl) download(bl,x.name); else toast('Ficheiro não disponível neste dispositivo'); }); }
+
+
+/* ---------- Registos no formato do impresso da empresa ---------- */
+function layoutFix(lay,cs){ if(!lay) return null; return {pre:lay.pre||[],map:(lay.map||[]).map(x=>x.k==='campo'?{h:x.h,k:'campo',cid:(cs[x.ci]||{}).id}:x)}; }
+function modLayout(md){ if(md&&md.layout&&(md.layout.map||[]).length){ const ids=new Set((md.campos||[]).map(c=>c.id)); const L=md.layout.map.filter(x=>x.k!=='campo'||ids.has(x.cid)); (md.campos||[]).forEach(c=>{ if(!L.some(x=>x.cid===c.id)) L.push({h:c.nome,k:'campo',cid:c.id}); }); return {pre:md.layout.pre||[],map:L}; }
+  const its=String(md&&md.itens||'').trim(); return {pre:[],map:[...(its?[{h:'',k:'item'}]:[{h:'Data',k:'data'},{h:'Hora',k:'hora'}]),...((md&&md.campos)||[]).map(c=>({h:c.nome+(c.unidade?' ('+c.unidade+')':''),k:'campo',cid:c.id})),{h:'Observações',k:'obs'},{h:'Rubrica',k:'resp'}]}; }
+function folhaHTML(mid,recs){ const md=D('modelos').find(x=>x.id===mid)||{}; const L=modLayout(md); const its=String(md.itens||'').split('\n').map(x=>x.trim()).filter(Boolean); const E=S.empresa;
+  const cell=(x,r,row)=>{ const v=(row&&row.v)||{}; if(x.k==='item') return '<b>'+esc(row?row.item:'')+'</b>'; if(x.k==='campo') return esc(v[x.cid]??''); if(!r) return '';
+    if(x.k==='data') return fDate(r.dt); if(x.k==='hora') return esc(String(r.dt||'').slice(11,16)); if(x.k==='obs') return esc(r.obs||''); return esc(r.responsavel||''); };
+  const head='<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:6px"><div><b style="font-size:16px">'+esc(md.nome||'Registo')+'</b>'+(L.pre||[]).filter(x=>norm(x)!==norm(md.nome||'')).map(x=>'<div class="sm">'+esc(x)+'</div>').join('')+'</div><div class="sm" style="text-align:right">'+esc(E.nome||'')+'</div></div>';
+  const th='<thead><tr>'+L.map.map(x=>'<th>'+esc(x.h||'')+'</th>').join('')+'</tr></thead>';
+  const tbl=b=>'<table class="folha">'+th+'<tbody>'+b+'</tbody></table>';
+  if(its.length){ const list=recs.length?recs:[null];
+    return list.map(r=>'<div class="folhap">'+head+'<div class="sm" style="margin-bottom:6px">Data: <b>'+(r?fDate(r.dt)+' '+String(r.dt||'').slice(11,16):'____/____/______')+'</b>'+(r&&r.lote?' · Lote: '+esc(r.lote):'')+(r&&r.responsavel?' · Responsável: '+esc(r.responsavel):'')+'</div>'+
+      tbl(its.map(it=>{ const row=r?(r.valores||[]).find(x=>x.item===it)||{item:it,v:{}}:{item:it,v:{}}; return '<tr>'+L.map.map(x=>'<td>'+cell(x,r,row)+'</td>').join('')+'</tr>'; }).join(''))+(r&&r.obs?'<p class="sm">Observações: '+esc(r.obs)+'</p>':'')+'</div>').join(''); }
+  const rows=[]; recs.forEach(r=>(r.valores&&r.valores.length?r.valores:[{v:{}}]).forEach(row=>rows.push('<tr>'+L.map.map(x=>'<td>'+cell(x,r,row)+'</td>').join('')+'</tr>')));
+  const nTot=recs.length?rows.length+3:20; while(rows.length<nTot) rows.push('<tr>'+L.map.map(()=>'<td>&nbsp;</td>').join('')+'</tr>');
+  return '<div class="folhap">'+head+tbl(rows.join(''))+'</div>'; }
+function printFolha(mid,recs){ const el=document.getElementById('printOne'); el.innerHTML='<style>table.folha{width:100%;border-collapse:collapse;font-size:12px}table.folha th,table.folha td{border:1px solid #333;padding:5px 6px;text-align:left;vertical-align:top}table.folha th{background:#eee}.folhap{page-break-after:always}</style>'+folhaHTML(mid,recs);
+  document.body.classList.add('print-one'); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-one'),500); },100); }
+async function dlOrigModelo(md){ if(!md){ toast('Escolha o modelo'); return; } const d=D('documentos').find(x=>x.id===md.origDoc); const a=(d&&d.docs&&d.docs[0])||(md.docs||[])[0]; if(!a){ toast('Este registo não foi importado de um impresso — use «Imprimir no formato do impresso».',6000); return; }
+  const b=await FDB.get(a.id).catch(()=>null); if(b) download(b,a.name); else toast('Ficheiro não disponível neste dispositivo'); }
+let REGP={};
+function regPrintBar(){ const ms=D('modelos').filter(m=>m.ativo!=='Não'); if(!ms.length) return ''; const mid=REGP.m&&ms.some(x=>x.id===REGP.m)?REGP.m:ms[0].id; const mes=REGP.mes||today().slice(0,7);
+  return '<div class="card noprint"><b>Imprimir as folhas como o impresso da empresa</b><p class="sm mut" style="margin:4px 0 8px">Os registos feitos na app saem com as mesmas colunas e linhas do impresso em papel.</p><div class="row"><select id="rpM" style="max-width:280px">'+ms.map(m=>'<option value="'+m.id+'"'+(m.id===mid?' selected':'')+'>'+esc(m.nome)+'</option>').join('')+'</select><input type="month" id="rpMes" value="'+mes+'" style="width:auto"><button class="btn p" id="rpGo">🖨 Imprimir mês</button><button class="btn" id="rpBl">Folha em branco</button><button class="btn" id="rpOr">📄 Impresso original</button></div></div>'; }
+function regPrintBind(){ const g=id=>document.getElementById(id); if(!g('rpM')) return; const st=()=>{ REGP={m:g('rpM').value,mes:g('rpMes').value}; };
+  g('rpM').onchange=st; g('rpMes').onchange=st;
+  g('rpGo').onclick=()=>{ st(); const rs=D('registos').filter(r=>r.modelo===REGP.m&&String(r.dt||'').startsWith(REGP.mes)).sort((a,b)=>String(a.dt).localeCompare(String(b.dt))); if(!rs.length){ toast('Sem registos deste modelo nesse mês'); return; } printFolha(REGP.m,rs); };
+  g('rpBl').onclick=()=>{ st(); printFolha(REGP.m,[]); };
+  g('rpOr').onclick=()=>{ st(); dlOrigModelo(D('modelos').find(x=>x.id===REGP.m)); }; }
+
+/* ---------- Impressos em branco «como em papel» ---------- */
+function blankMonth(){ const d=new Date(); return {y:d.getFullYear(),m:d.getMonth(),n:new Date(d.getFullYear(),d.getMonth()+1,0).getDate(),lab:MESES_L[d.getMonth()]+' '+d.getFullYear()}; }
+const BLANK_CSS='<style>.bg td,.bg th{border:1px solid #333;padding:3px 4px;font-size:10.5px;text-align:center}.bg{border-collapse:collapse;width:100%}.bg td.l,.bg th.l{text-align:left}</style>';
+const BLANK_SPECIAL={
+ temperaturas:()=>{ const fr=D('equipamentos').filter(isFrio); const M_=blankMonth(); if(!fr.length)return false;
+   const slots=e=>{ const hs=String(e.horas||e.horasTemp||'').split(/[;,\s]+/).filter(x=>/\d/.test(x)); const n=(/^(\d)x/.exec(e.freqTemp||'')||[])[1]; return hs.length?hs:n?Array.from({length:+n},(_,i)=>['Manhã','Tarde','Noite','4.ª'][i]):['']; };
+   const cols=fr.flatMap(e=>slots(e).map(sl=>({e,sl})));
+   doPrint(BLANK_CSS+'<h1>Registo de temperaturas — '+M_.lab+'</h1>'+blankHead('Registo de temperaturas')+'<table class="bg"><thead><tr><th rowspan="2">Dia</th>'+fr.map(e=>'<th colspan="'+slots(e).length+'">'+esc(e.nome)+'<br><small>'+M.equipamentos.virt.limites.fn(e)+'</small></th>').join('')+'<th rowspan="2">Rubrica</th></tr><tr>'+cols.map(c=>'<th>'+esc(c.sl||'°C')+'</th>').join('')+'</tr></thead><tbody>'+
+     Array.from({length:M_.n},(_,i)=>'<tr><td>'+(i+1)+'</td>'+cols.map(()=>'<td style="height:20px"></td>').join('')+'<td></td></tr>').join('')+'</tbody></table><p class="sm">Fora dos limites: registar a ação corretiva no verso ou nas não conformidades.</p>'+blankSign()); },
+ higRegisto:()=>{ const T=D('higPlano'); const M_=blankMonth(); if(!T.length)return false;
+   doPrint(BLANK_CSS+'<h1>Registo de higienização — '+M_.lab+'</h1>'+blankHead('Registo de higienização')+'<table class="bg"><thead><tr><th class="l">O quê / área</th><th class="l">Frequência</th>'+Array.from({length:M_.n},(_,i)=>'<th>'+(i+1)+'</th>').join('')+'</tr></thead><tbody>'+
+     T.map(h=>'<tr><td class="l">'+esc((h.oque||'')+(h.area?' ('+h.area+')':''))+'</td><td class="l">'+esc(h.frequencia||'')+'</td>'+Array.from({length:M_.n},()=>'<td style="height:22px"></td>').join('')+'</tr>').join('')+'</tbody></table><p class="sm">Marque com a sua rubrica o dia em que realizou a tarefa. Produtos e método: ver plano de higienização.</p>'+blankSign()); },
+ controlos:()=>{ const P=D('paramControlo'); const M_=blankMonth(); if(!P.length)return false;
+   doPrint(BLANK_CSS+'<h1>Controlos específicos — '+M_.lab+'</h1>'+blankHead('Controlos específicos')+'<table class="bg"><thead><tr><th>Dia</th><th>Hora</th>'+P.map(p=>'<th>'+esc(p.nome)+'<br><small>'+M.paramControlo.virt.limites.fn(p)+'</small></th>').join('')+'<th>Lote</th><th>Rubrica</th></tr></thead><tbody>'+
+     Array.from({length:M_.n},(_,i)=>'<tr><td>'+(i+1)+'</td><td></td>'+P.map(()=>'<td style="height:20px"></td>').join('')+'<td></td><td></td></tr>').join('')+'</tbody></table>'+blankSign()); },
+ planoManut:()=>blankPlano('manut'), planoCalib:()=>blankPlano('calib'), planoAnalises:()=>blankPlano('anal')
+};
+function blankPlano(t){ const c=planCfg(t); const y=new Date().getFullYear(); const its=c.items(); if(!its.length){ toast('O plano ainda não tem itens'); return; }
+  doPrint(BLANK_CSS+'<h1>'+c.title+' '+y+'</h1>'+blankHead(c.title)+'<table class="bg"><thead><tr><th class="l">'+(t==='anal'?'Análise':'Equipamento')+'</th><th class="l">O que fazer</th>'+MESES.map(m=>'<th>'+m+'</th>').join('')+'</tr></thead><tbody>'+
+    its.map(r=>{ const ms=planMonths(c,r,y); return '<tr><td class="l">'+esc(c.name(r))+'</td><td class="l" style="max-width:220px">'+esc(c.tasks(r)).replace(/\n/g,'<br>')+'</td>'+MESES.map((m,i)=>'<td style="height:24px">'+(ms.has(i)?'X':'')+'</td>').join('')+'</tr>'; }).join('')+'</tbody></table><p class="sm">X = previsto. Ao realizar, escreva a data e rubrique na casa do mês.</p>'+blankSign()); }
+/* ---------- Planos por mês (como o documento original) ---------- */
+let PLAN_V=(()=>{ try{ return JSON.parse(localStorage.getItem('haccp_planv')||'null')||{}; }catch(e){ return {}; } })();
+const ymOf=d=>String(d||'').slice(0,7);
+function planCfg(t){
+  if(t==='anal') return {t,key:'planoAnalises',title:'Plano de análises',what:'análises',items:()=>D('planoAnalises'),name:r=>(r.amostra||'')+(r.tipo?' · '+r.tipo:''),meses:r=>r.meses||[],per:r=>num(r.frequencia),last:r=>(lastAnalise(r.id)||{}).data,
+    recs:r=>D('analises').filter(a=>a.plano===r.id).map(a=>({data:a.data,ok:a.conforme,id:a.id,k:'analises'})),tasks:r=>[r.parametros&&'Parâmetros: '+r.parametros,r.laboratorio&&'Laboratório: '+r.laboratorio,r.criterio&&'Critérios: '+r.criterio].filter(Boolean).join('\n'),
+    reg:r=>openForm('analises',null,{plano:r.id,tipo:r.tipo||'',amostra:r.amostra||'',parametros:r.parametros||'',laboratorio:r.laboratorio||''}),edit:r=>openForm('planoAnalises',r.id),since:r=>r._c};
+  const cal=t==='calib';
+  return {t,key:cal?'planoCalib':'planoManut',title:cal?'Plano de calibração':'Plano de manutenção',what:cal?'calibrações':'manutenções',
+    items:()=>D('equipamentos').filter(e=>e.ativo!=='Não'&&(cal?(e.calibra==='Sim'||num(e.perCalib)||(e.mesesCalib||[]).length):(num(e.periodicidade)||e.tarefasManut||(e.mesesManut||[]).length))),
+    name:e=>e.nome+(e.local?' · '+e.local:''),meses:e=>(cal?e.mesesCalib:e.mesesManut)||[],per:e=>num(cal?e.perCalib:e.periodicidade),last:e=>cal?e.ultimaCalib:e.ultima,
+    recs:e=>D('manutencao').filter(m=>m.equipamento===e.id&&(cal?isCalibTipo(m.tipo):(m.tipo!=='Corretiva'&&!isCalibTipo(m.tipo)))).map(m=>({data:m.data,ok:m.resultado,id:m.id,k:'manutencao'})),
+    tasks:e=>cal?[e.criterioCalib&&'Critério: '+e.criterioCalib,e.padrao&&'Padrão / método: '+e.padrao,e.entCalib&&'Entidade: '+e.entCalib,e.serie&&'Nº série: '+e.serie].filter(Boolean).join('\n'):[e.tarefasManut,e.entidade&&'Entidade / técnico: '+e.entidade,e.serie&&'Nº série: '+e.serie].filter(Boolean).join('\n'),
+    reg:e=>openForm('manutencao',null,cal?{equipamento:e.id,tipo:'Calibração',executante:e.entCalib||'',descricao:[e.padrao?'Padrão/método: '+e.padrao:'',e.criterioCalib?'Critério: '+e.criterioCalib:''].filter(Boolean).join('\n')}:{equipamento:e.id,tipo:'Preventiva',executante:e.entidade||'',descricao:e.tarefasManut||''}),
+    edit:e=>openForm('equipamentos',e.id),since:e=>e._c}; }
+/* meses previstos num ano (índices 0-11) */
+function planMonths(c,r,y){ const ms=c.meses(r); if(ms.length) return new Set(ms.map(m=>MESES.indexOf(m)).filter(i=>i>=0));
+  const per=c.per(r); const out=new Set(); if(!per) return out; let d=c.last(r); if(!d){ if(+today().slice(0,4)===y) out.add(new Date().getMonth()); return out; }
+  for(let i=0;i<400;i++){ d=addDays(d,per); const yy=+d.slice(0,4); if(yy>y) break; if(yy===y) out.add(+d.slice(5,7)-1); } return out; }
+function planDone(c,r,ym){ return c.recs(r).filter(x=>ymOf(x.data)===ym).sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0]||null; }
+function planDue(c,r){ const y=+today().slice(0,4), cm=new Date().getMonth(); const ms=planMonths(c,r,y); const since=ymOf(c.since(r)||'');
+  for(let m=0;m<=cm;m++){ if(!ms.has(m)) continue; const ym=y+'-'+String(m+1).padStart(2,'0'); if(since&&ym<since&&m<cm) continue; if(!planDone(c,r,ym)) return ym+'-'+String(new Date(y,m+1,0).getDate()).padStart(2,'0'); }
+  for(let k=1;k<=12;k++){ const m=(cm+k)%12, yy=y+Math.floor((cm+k)/12); const ms2=yy===y?ms:planMonths(c,r,yy); if(ms2.has(m)) return yy+'-'+String(m+1).padStart(2,'0')+'-01'; } return null; }
+function planWidgetHTML(t){ const c=planCfg(t); const st=PLAN_V[t]||{}; const mode=st.mode||'mes'; const now=new Date(); const y=st.y||now.getFullYear(); const mi=st.m!=null?st.m:now.getMonth();
+  const items=c.items(); const ymSel=y+'-'+String(mi+1).padStart(2,'0'); const curYM=today().slice(0,7);
+  let h='<div class="card" id="planW" data-t="'+t+'"><div class="row noprint" style="margin-bottom:8px"><div class="seg"><button class="btn s'+(mode==='mes'?' p':'')+'" data-pm="mes">Este mês</button><button class="btn s'+(mode==='ano'?' p':'')+'" data-pm="ano">Plano anual</button></div></div><div class="row noprint" style="justify-content:center;margin-bottom:8px">'+
+    (mode==='mes'?'<button class="btn s" data-pn="-1">◀</button><b style="min-width:130px;text-align:center">'+MESES_L[mi]+' '+y+'</b><button class="btn s" data-pn="1">▶</button>':'<button class="btn s" data-py="-1">◀</button><b style="min-width:60px;text-align:center">'+y+'</b><button class="btn s" data-py="1">▶</button>')+'</div>';
+  if(!items.length) return h+'<p class="sm mut">Sem itens no plano. '+(t==='anal'?'Acrescente análises com os meses previstos.':'Nos equipamentos, indique os meses previstos (ou a periodicidade).')+'</p></div>';
+  if(mode==='mes'){ const L=items.filter(r=>planMonths(c,r,y).has(mi));
+    h+='<div class="pr-only">'+docHead(c.title+' — '+MESES_L[mi]+' '+y,'')+'</div>';
+    h+=L.length?L.map(r=>{ const d=planDone(c,r,ymSel); const late=!d&&ymSel<curYM; const tk=c.tasks(r);
+      return '<details class="todo pw'+(d?' done':'')+(late?' late':'')+'"><summary style="display:flex;gap:10px;align-items:center;cursor:pointer;list-style:none;width:100%"><span class="ck">'+(d?'✓':'')+'</span><span class="tt"><b>'+esc(c.name(r))+'</b><small>'+(d?'Feito em '+fDate(d.data)+(d.ok&&d.ok!=='Conforme'?' · '+esc(d.ok):''):late?'Em atraso':'Por fazer')+'</small></span><span class="sm mut">ver ▾</span></summary>'+
+        '<div style="padding:6px 0 4px 34px;width:100%"><div class="sm" style="white-space:pre-line;margin-bottom:8px">'+(tk?esc(tk):'<span class="mut">Sem tarefas descritas.</span>')+'</div><div class="row">'+(lvl(t==='anal'?'analises':'manutencao')>=2?'<button class="btn s p" data-pr="'+r.id+'">Registar</button>':'')+(d?'<button class="btn s" data-po="'+d.k+'|'+d.id+'">Ver registo</button>':'')+(lvl(c.t==='anal'?'planoAnalises':'equipamentos')>=2?'<button class="btn s" data-pe="'+r.id+'">Editar</button>':'')+'</div></div></details>'; }).join(''):'<p class="sm mut">Nada previsto para '+MESES_L[mi]+'.</p>';
+    const nd=L.filter(r=>planDone(c,r,ymSel)).length; if(L.length) h+='<p class="sm mut" style="margin-top:6px">'+nd+' de '+L.length+' '+c.what+' feitas · toque numa linha para ver o que fazer</p>'; }
+  else { h+='<div class="pr-only">'+docHead(c.title+' '+y,'Impresso em '+fDate(today()))+'</div><div class="tw"><table class="pgrid"><thead><tr><th style="text-align:left">'+(t==='anal'?'Análise':'Equipamento')+'</th>'+MESES.map((m,i)=>'<th'+(y===now.getFullYear()&&i===now.getMonth()?' class="cur"':'')+'>'+m+'</th>').join('')+'</tr></thead><tbody>'+
+      items.map(r=>{ const ms=planMonths(c,r,y); return '<tr><td style="text-align:left"><a href="#" data-pe="'+r.id+'">'+esc(c.name(r))+'</a></td>'+MESES.map((m,i)=>{ const ym=y+'-'+String(i+1).padStart(2,'0'); const d=planDone(c,r,ym); const pl=ms.has(i);
+        const since=ymOf(c.since(r)||''); const cls=d?'ok':pl&&ym<curYM&&(!since||ym>=since)?'bad':pl?'pl':''; return '<td class="'+cls+'" title="'+(d?'Feito '+fDate(d.data):pl?'Previsto':'')+'">'+(d?'✓':pl?'X':'')+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div><p class="sm mut">X = previsto · ✓ = feito · vermelho = em atraso</p>'; }
+  return h+'</div>'; }
+function planWidgetBind(t){ const w=document.getElementById('planW'); if(!w) return; const c=planCfg(t); const st=PLAN_V[t]=PLAN_V[t]||{}; const now=new Date();
+  const keep=()=>{ try{ localStorage.setItem('haccp_planv',JSON.stringify(PLAN_V)); }catch(e){} render(); };
+  w.querySelectorAll('[data-pm]').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.pm; keep(); });
+  w.querySelectorAll('[data-pn]').forEach(b=>b.onclick=()=>{ let m=(st.m!=null?st.m:now.getMonth())+(+b.dataset.pn), y=st.y||now.getFullYear(); if(m<0){ m=11; y--; } if(m>11){ m=0; y++; } st.m=m; st.y=y; keep(); });
+  w.querySelectorAll('[data-py]').forEach(b=>b.onclick=()=>{ st.y=(st.y||now.getFullYear())+(+b.dataset.py); keep(); });
+  const find=id=>c.items().find(x=>x.id===id);
+  w.querySelectorAll('[data-pr]').forEach(b=>b.onclick=()=>c.reg(find(b.dataset.pr)));
+  w.querySelectorAll('[data-pe]').forEach(b=>b.onclick=e=>{ e.preventDefault(); c.edit(find(b.dataset.pe)); });
+  w.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.po.split('|'); openForm(k,id); }); }
+function planoEquipHTML(cal){ const c=planCfg(cal?'calib':'manut');
+  return '<h1>'+c.title+'</h1><p class="sub">'+(cal?'Calibrações e verificações dos equipamentos de medição.':'Manutenção preventiva dos equipamentos.')+' Em «Este mês» vê só o que está previsto para o mês; toque numa linha para ver o que fazer e registar.</p>'+origBanner(c.key)+
+    '<div class="row noprint" style="margin-bottom:10px"><a class="btn" href="#/equipamentos">Equipamentos</a><a class="btn" href="#/manutencao">Histórico</a><button class="btn" id="peDl">⬇ Descarregar / imprimir</button><button class="btn" id="peBl">Impresso em branco</button></div>'+planWidgetHTML(c.t); }
+function bindPlanoEquip(cal){ const c=planCfg(cal?'calib':'manut'); planWidgetBind(c.t); origBind(c.key); const b=document.getElementById('peDl'); if(b) b.onclick=()=>askVersion(c.key,()=>window.print()); const bl=document.getElementById('peBl'); if(bl) bl.onclick=()=>blankPlano(c.t); }
 
 /* ---------- Hub: planos e registos gerais ---------- */
 function viewPlanos(){ const P=[['planoManut','Plano de manutenção'],['planoCalib','Plano de calibração'],['higPlano',null],['planoAnalises',null],['pragas',null],['formacao','Plano de formação'],['paramControlo',null],['regularidade','Regularidade dos registos'],['organograma',null],['plano','Plano HACCP (imprimir)'],['vidros',null],['objetivos',null],['vulnerabilidade',null],['contactosEmerg',null]];
