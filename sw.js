@@ -1,5 +1,5 @@
 /* Service worker — permite instalar a app e abri-la sem internet. */
-const VERSION = 'haccp-v36';
+const VERSION = 'haccp-v43';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
